@@ -1,0 +1,18 @@
+[gold]
+read_verilog -sv rtl/gold/mac_gold.sv
+read_verilog -sv -D DUT=mac_gold formal/wrapper.sv
+prep -top mac_formal -flatten
+
+[gate]
+read_verilog -sv rtl/candidate/mac_candidate.sv
+read_verilog -sv -D DUT=mac_candidate formal/wrapper.sv
+prep -top mac_formal -flatten
+
+[match]
+gold-nomatch raw_acc
+gold-nomatch first
+gold-nomatch dut.*
+
+[strategy induction]
+use sat
+depth 10
