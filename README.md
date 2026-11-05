@@ -27,7 +27,7 @@ kernel `6.18.54.1-microsoft-standard-WSL2`. Available: GNU Make 4.4.1,
 G++ 15.2.0, Node.js v24.22.1, Bash and GNU coreutils. Node parses evidence only;
 there is no proposal service or agent framework.
 
-Required on `PATH`: `verilator`, `yosys`, `eqy`, `g++`, `make`, `node`, `timeout`,
+Required on `PATH`: `verilator`, `yosys`, `eqy`, `sby`, `bitwuzla`, `g++`, `make`, `node`, `timeout`,
 plus the usual shell/coreutils tools. Use a compatible Yosys/EQY installation
 (e.g. a complete OSS CAD Suite), rather than mixing unverified releases.
 Verilator must support `--binary --timing`; Node must support ES modules.
@@ -39,15 +39,16 @@ system EDA installation is overwritten. The archive is approximately 749 MB,
 and extraction requires additional disk space. Run `source .tools/env.sh` in
 each new shell. The setup command needs internet access.
 
-EQY uses its `sat` strategy with Yosys's built-in SAT solver and temporal
-induction, depth 10. No external SMT solver or SymbiYosys is needed for this
-strategy. The SAT solver version is tied to the installed Yosys build.
+EQY uses SBY with `smtbmc bitwuzla` and temporal induction, depth 10.
+SBY and Bitwuzla come from the same pinned suite. The independent depth-3
+counterexample check uses Yosys's built-in SAT solver.
 
-**Tested HDL tool/solver versions: none yet.** Verilator, Yosys, and EQY are absent.
-Ubuntu package metadata lists Verilator 5.032-1 and Yosys 0.52-2, but these are
-not installed or validated versions. A download attempt failed with DNS
-resolution failure. `make tools` records actual tool versions when installed.
-See [DEVELOPMENT.md](DEVELOPMENT.md) for the blocked baseline attempt.
+Validated on Ubuntu 24.04 GitHub Actions: Verilator 5.055
+(`v5.054-63-g57bbb293d`), Yosys 0.70+336 (`8f3cc3d0c`),
+EQY v0.70-2-g3301516, SBY v0.70-9-g79fc9ed, and Bitwuzla 0.9.1.
+Phase 1 passes: 273,187 simulation cycles, completed equivalence proof,
+reachable mutant counterexample, and 988 generic cells for each implementation.
+See [DEVELOPMENT.md](DEVELOPMENT.md) for commands and evidence.
 
 ## Commands
 

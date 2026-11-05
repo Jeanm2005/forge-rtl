@@ -4,24 +4,27 @@
 
 | Field | State |
 | --- | --- |
-| Active phase | Phase 1 · Local MAC baseline, implementation present; validation blocked |
+| Active phase | Phase 1 complete; Phase 2 is next |
 | Current target | Signed INT8 × INT8 MAC with wrapping INT32 accumulation |
-| Last verified revision | No verified revision; supplied `.git/` is empty and `git rev-parse HEAD` fails |
-| Tested environment | Ubuntu 26.04.1 LTS, WSL2 x86-64; shell/Node syntax checks only |
-| Current baseline | Unmeasured; no simulation pass, completed proof, confirmed counterexample, or synthesis counts |
-| Next action | Provision compatible Verilator/Yosys/EQY; run `make clean` then `make check` |
-| Open question | Tool compatibility and all real EDA outcomes remain unverified |
+| Last verified revision | `2bb50e0` (full SHA in `build/ci-verified/revision.txt`) |
+| Tested environment | Ubuntu 24.04 GitHub Actions, pinned OSS CAD Suite 2026-11-05 |
+| Current baseline | 273,187 simulation cycles; completed proof; reachable mutant counterexample; 988 generic cells per implementation |
+| Next action | Phase 2 Rust execution worker |
+| Open question | No Phase 1 blockers remain |
 
 ## Baseline results
 
-| Check | Observed result | Evidence |
+Evidence below is extracted from CI run [42083661284](https://github.com/Jeanm2005/forge-rtl/actions/runs/42083661284)
+into ignored `build/ci-verified/`.
+
+| Check | Observed result | Evidence relative to that directory |
 | --- | --- | --- |
-| Verilator simulation | BLOCKED: Verilator absent | `build/sim.log` |
-| EQY equivalence | BLOCKED: EQY and Yosys absent | `build/formal.log` |
-| EQY negative control and reachable SAT witness | BLOCKED: EQY and Yosys absent | `build/negative.log` |
-| Yosys synthesis | BLOCKED: Yosys absent; gold/candidate/delta cell counts unavailable | `build/synth.log` |
-| Full suite | Failed prerequisite gate; no `build/status` success marker | `build/all.log`, `build/all-inputs.txt` |
-| Runner syntax | PASS: Bash and both Node modules parse | Commands below |
+| Verilator simulation | PASS: 273187 cycles, seed 1badf00d, one wrap each direction | `sim/result.log` |
+| EQY equivalence | PASS: public ports only, one completed partition | `formal/PASS`, `formal/matched.ids`, `formal/strategies/mac_formal.acc/induction/` |
+| Negative control | EQY FAIL with confirmed partition FAIL; reachable depth-3 SAT counterexample | `negative/eqy/`, `negative/counterexample.vcd`, `negative/counterexample.json`, `negative/reachable.log` |
+| Generic Yosys synthesis | Gold 988, candidate 988, delta 0; both netlist formats emitted | `synth/comparison.json`, `synth/{gold,candidate}/` |
+| Full suite | PASS from clean Actions checkout | `status`, `all.log`, `all-inputs.txt`, `versions.txt`, `revision.txt` |
+| Runner syntax | PASS | Actions syntax step |
 
 ## Engineering decisions
 
@@ -30,7 +33,7 @@
 | D001 | Start with a single MAC and fixed arithmetic/reset contract | Establish a small reproducible baseline. |
 | D002 | Keep a signedness mutant as a permanent negative control | Demonstrate observable signed-arithmetic sensitivity. |
 | D003 | Introduce Rust execution before Go orchestration and Python proposals | Deferred to later phases per roadmap. |
-| D004 | Use EQY SAT temporal induction with depth 10 and no external solver | Fits the small sequential arithmetic cone; requires completed proof, not merely bounded agreement. Compatibility and completion await real tools. |
+| D004 | Use EQY SBY smtbmc Bitwuzla induction, depth 10, from the pinned suite | SAT strategy returns UNKNOWN for the mutant; SBY supplies explicit PASS/FAIL and counterexample evidence. |
 | D005 | Disable internal EQY matches and audit public-only matches | Prevent internal cut points from hiding a sequential reset or arithmetic mismatch. Require every generated partition's strategy to pass. |
 | D006 | Confirm mutant failure independently with bounded reachable SAT, depth 3 | EQY failure alone may mean failure to prove. Require an actual model and retained VCD/JSON; reject errors/timeouts. |
 | D007 | Keep candidate as an equivalence fixture | No measurements support an optimization claim. |
@@ -100,12 +103,8 @@
 
 ## Open issues
 
-1. Missing Verilator, Yosys, and EQY block every EDA exit criterion. Install a
-   compatible toolchain, then run the full suite and replace pending results with
-   observed versions, counts, proof status, and trace paths.
-2. No usable Git metadata prevents recording a revision or validating from a
-   clean Git checkout. Once a real checkout is available, record its commit plus
-   input hashes and run the documented entry point there.
+No Phase 1 blockers remain. Historical blocked attempts below are retained as
+observations from their original environments.
 
 ### 2026-11-05 · Repository publication and CI bootstrap (publication blocked)
 
@@ -179,3 +178,28 @@
   commit before adding this observation; RTL and runner inputs are unchanged).
   Evidence: `/tmp/forge-rtl-clean-validation/build/all.log` and `all-inputs.txt`.
   A clean local Git clone is now available; a successful EDA run is still pending.
+
+### 2026-11-05 · Publication reconciled and Phase 1 validated
+
+- Preserved all nine original commits, `4595d6d` through `2fc457a`, and pushed
+  each separately in order. Verified the original backup bundle with
+  `git -C /tmp/forge-rtl-publish bundle verify /home/jeanm/havefun/forge-rtl/build/forge-rtl.bundle`.
+  Remote was empty. `git fetch origin`, `git diff --cached origin/main --exit-code`,
+  and `git switch -C main origin/main` reconciled the workspace without losing
+  source changes. The original bundle and prepared checkout remain available.
+- CI repairs are appended commits: scoped `[match mac_formal]` as required by
+  EQY's parser, excluded preserved `dut` scope from matching, and replaced SAT
+  strategy with SBY/Bitwuzla. The public-only audit and strict completed outcome
+  requirements remain enforced. No RTL or proof assumptions changed.
+- Clean Actions checkout at `2bb50e0`: `bash scripts/setup.sh`,
+  `bash -n scripts/check.sh scripts/setup.sh`, `node --check scripts/counts.mjs`,
+  `node --check scripts/audit-eqy.mjs`, then `source .tools/env.sh; make check`
+  all exit 0. Run 42083661284 completed successfully and delivered the verified
+  archive plus SHA-256. Earlier runs 42083029931, 42083299789, and 42083463134
+  retain failure diagnostics; rapid initial pushes also cancelled run 42083030296.
+- Observed tools: Verilator 5.055 devel `v5.054-63-g57bbb293d`, Yosys 0.70+336
+  `8f3cc3d0c`, EQY v0.70-2-g3301516, SBY v0.70-9-g79fc9ed,
+  Bitwuzla 0.9.1, GCC 13.3.0, Make 4.3, Node 24.22.1.
+- Results and paths are in the current baseline table. Counts are generic
+  structural cells, with no physical area or optimization claim. Phase 1 exit
+  criteria are satisfied; no candidate has been promoted.
