@@ -15,5 +15,6 @@ gold-nomatch dut.*
 gold-nomatch dut
 
 [strategy induction]
-use sat
+use sby
+engine smtbmc bitwuzla
 depth 10

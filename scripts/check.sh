@@ -34,12 +34,14 @@ versions() {
     verilator --version
     yosys -V
     eqy --version
+    sby --version
+    bitwuzla --version
     g++ --version | head -1
     make --version | head -1
     node --version
 }
 tools() {
-    require verilator yosys eqy g++ make node timeout
+    require verilator yosys eqy sby bitwuzla g++ make node timeout
     versions > build/versions.txt
     cat build/versions.txt
 }
@@ -55,7 +57,7 @@ sim() {
 }
 formal() {
     rm -rf build/formal
-    require eqy yosys node timeout
+    require eqy yosys sby bitwuzla node timeout
     timeout 180s eqy -f -d build/formal formal/good.eqy
     test -f build/formal/PASS
     test ! -e build/formal/FAIL
@@ -69,7 +71,7 @@ formal() {
 negative() {
     rm -rf build/negative
     mkdir build/negative
-    require eqy yosys node timeout
+    require eqy yosys sby bitwuzla node timeout
     sed -e 's@rtl/candidate/mac_candidate.sv@tests/mac_mutant.sv@' \
         -e 's/DUT=mac_candidate/DUT=mac_mutant/' formal/good.eqy > build/negative/mutant.eqy
     local rc=0
