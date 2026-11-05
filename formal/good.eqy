@@ -12,6 +12,7 @@ prep -top mac_formal -flatten
 gold-nomatch raw_acc
 gold-nomatch first
 gold-nomatch dut.*
+gold-nomatch dut
 
 [strategy induction]
 use sat
