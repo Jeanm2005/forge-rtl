@@ -8,7 +8,7 @@ read_verilog -sv rtl/candidate/mac_candidate.sv
 read_verilog -sv -D DUT=mac_candidate formal/wrapper.sv
 prep -top mac_formal -flatten
 
-[match]
+[match mac_formal]
 gold-nomatch raw_acc
 gold-nomatch first
 gold-nomatch dut.*
