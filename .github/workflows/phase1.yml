@@ -1,0 +1,64 @@
+name: Phase 1 verification and evidence
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase1-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: MAC simulation, equivalence, negative control, and synthesis
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.22.1'
+      - name: Install pinned EDA toolchain and system prerequisites
+        run: bash scripts/setup.sh
+      - name: Check runner syntax
+        run: |
+          bash -n scripts/check.sh scripts/setup.sh
+          node --check scripts/counts.mjs
+          node --check scripts/audit-eqy.mjs
+      - name: Run the full Phase 1 suite
+        run: |
+          source .tools/env.sh
+          make check
+      - name: Package verified evidence
+        run: |
+          test "$(cat build/status)" = PASS
+          git rev-parse HEAD > build/revision.txt
+          tar --exclude='./sim/obj' -czf phase1-evidence.tar.gz -C build .
+          sha256sum phase1-evidence.tar.gz > phase1-evidence.tar.gz.sha256
+      - name: Deliver verified evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: phase1-verified-${{ github.sha }}
+          path: |
+            phase1-evidence.tar.gz
+            phase1-evidence.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 30
+      - name: Preserve diagnostic evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: phase1-diagnostics-${{ github.sha }}
+          path: |
+            build/
+            !build/sim/obj/
+          if-no-files-found: warn
+          retention-days: 14
