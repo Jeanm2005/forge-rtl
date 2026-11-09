@@ -32,7 +32,16 @@ fn rejects_untrusted_inputs() {
         "rtl/gold/mac_gold.sv",
         "/rtl/candidate/mac_candidate.sv",
     ] {
-        assert!(Candidate::replacement(path, b"module x; endmodule".to_vec()).is_err());
+        assert!(Candidate::replacement(path, b"module mac_candidate; endmodule".to_vec()).is_err());
+    }
+    for source in [
+        "module mac_candidate; initial $system(64'h616263); endmodule",
+        "module mac_candidate; assume property (1); endmodule",
+        "module mac_candidate; (* anyconst *) logic a; endmodule",
+        "module mac_candidate; /*verilator public*/ endmodule",
+        "module mac_candidate; endmodule module mac_gold; endmodule",
+    ] {
+        assert!(Candidate::replacement(CANDIDATE_PATH, source.as_bytes().to_vec()).is_err());
     }
     for source in [
         b"`include \"/etc/passwd\"".to_vec(),
@@ -91,7 +100,8 @@ fn rejects_trusted_source_symlinks_before_staging() {
     fs::create_dir(&trusted).unwrap();
     std::os::unix::fs::symlink("/tmp", trusted.join("rtl")).unwrap();
     let candidate =
-        Candidate::replacement(CANDIDATE_PATH, b"module x; endmodule".to_vec()).unwrap();
+        Candidate::replacement(CANDIDATE_PATH, b"module mac_candidate; endmodule".to_vec())
+            .unwrap();
     let id = Identity::parse("test").unwrap();
     assert!(prepare(&trusted, &temp.0, &id, &id, &candidate).is_err());
     assert_eq!(fs::read_dir(&temp.0).unwrap().count(), 1);

@@ -208,6 +208,11 @@ pub fn execute(
     for path in ["/etc/os-release", "/etc/ld.so.cache"] {
         command.args(["--ro-bind", path, path]);
     }
+    let awk = fs::canonicalize("/usr/bin/awk")?;
+    command
+        .arg("--ro-bind")
+        .arg(awk)
+        .arg("/etc/alternatives/awk");
     command.arg("--ro-bind").arg(toolchain).arg("/opt/oss");
     command.arg("--ro-bind").arg(input).arg("/work");
     command.args([
@@ -227,6 +232,10 @@ pub fn execute(
         "/proc",
         "--dev",
         "/dev",
+        "--remount-ro",
+        "/dev",
+        "--remount-ro",
+        "/",
         "--chdir",
         "/work",
         "--",

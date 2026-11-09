@@ -1,3 +1,4 @@
+pub mod evidence;
 pub mod sandbox;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
@@ -11,6 +12,7 @@ const TRUSTED: &[&str] = &[
     "tests/mac_mutant.sv",
     "formal/wrapper.sv",
     "formal/reachability.sv",
+    "formal/candidate-reachability.sv",
     "formal/good.eqy",
     "scripts/check.sh",
     "scripts/audit-eqy.mjs",
@@ -84,6 +86,43 @@ impl Candidate {
                 "candidate preprocessing and NUL bytes are forbidden",
             ));
         }
+        if text.contains('"')
+            || text.contains('\\')
+            || text.contains("//")
+            || text.contains("/*")
+            || text.contains("(*")
+        {
+            return Err(Error::InvalidInput(
+                "candidate strings, escaped identifiers, comments, and attributes are forbidden",
+            ));
+        }
+        let tokens: Vec<_> = text
+            .split(|c: char| !c.is_ascii_alphanumeric() && c != '_' && c != '$')
+            .filter(|token| !token.is_empty())
+            .collect();
+        let forbidden = [
+            "initial", "final", "import", "export", "bind", "assume", "restrict", "assert",
+            "cover", "force", "release", "defparam", "specify", "config", "library",
+        ];
+        for token in &tokens {
+            if forbidden.contains(token)
+                || token.contains('$')
+                    && !["$signed", "$unsigned", "$clog2", "$bits"].contains(token)
+            {
+                return Err(Error::InvalidInput(
+                    "candidate contains an unsupported behavioral or formal construct",
+                ));
+            }
+        }
+        if tokens.iter().filter(|token| **token == "module").count() != 1
+            || tokens.iter().filter(|token| **token == "endmodule").count() != 1
+            || tokens.first() != Some(&"module")
+            || tokens.get(1) != Some(&"mac_candidate")
+        {
+            return Err(Error::InvalidInput(
+                "candidate must define only module mac_candidate",
+            ));
+        }
         Ok(Self { source })
     }
 }
@@ -91,6 +130,8 @@ impl Candidate {
 #[derive(Debug)]
 pub struct PreparedAttempt {
     pub path: PathBuf,
+    pub job: Identity,
+    pub attempt: Identity,
 }
 
 fn read_regular(root: &Path, relative: &Path) -> Result<Vec<u8>, Error> {
@@ -117,6 +158,17 @@ fn read_regular(root: &Path, relative: &Path) -> Result<Vec<u8>, Error> {
         return Err(Error::InvalidInput("source exceeds size limit"));
     }
     Ok(bytes)
+}
+
+pub(crate) fn sync_directories(root: &Path) -> Result<(), Error> {
+    for entry in fs::read_dir(root)? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() {
+            sync_directories(&entry.path())?;
+        }
+    }
+    fs::File::open(root)?.sync_all()?;
+    Ok(())
 }
 
 pub fn prepare(
@@ -147,11 +199,17 @@ pub fn prepare(
         file.set_permissions(permissions)?;
     }
     fs::create_dir(path.join("inputs/build"))?;
+    sync_directories(&path.join("inputs"))?;
     let mut ready = OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(path.join("PREPARED"))?;
-    ready.write_all(b"staging-only; execution and eligibility unavailable\n")?;
+    ready.write_all(b"inputs prepared; not a verification result\n")?;
     ready.sync_all()?;
-    Ok(PreparedAttempt { path })
+    fs::File::open(&path)?.sync_all()?;
+    Ok(PreparedAttempt {
+        path,
+        job: job.clone(),
+        attempt: attempt.clone(),
+    })
 }

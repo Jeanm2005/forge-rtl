@@ -81,6 +81,12 @@ try:
     raise AssertionError('writable reference')
 except OSError:
     pass
+for path in ['/unexpected', '/dev/unexpected']:
+    try:
+        open(path, 'w')
+        raise AssertionError('writable sandbox root or device directory')
+    except OSError:
+        pass
 try:
     open('/tmp/full', 'wb').write(b'x' * (2 * 1024 * 1024))
     raise AssertionError('unbounded tmpfs')
@@ -231,4 +237,79 @@ PY
         fs::read_to_string(result.log).unwrap()
     );
     assert_service_empty(&result.unit);
+}
+
+#[test]
+#[ignore = "requires host user systemd, cgroups, and Bubblewrap"]
+fn terminal_manifests_preserve_failures_and_cancellation_without_overwrite() {
+    use forge_worker::evidence::{evaluate, Outcome};
+    for (script, cancelled, expected) in [
+        ("exit 19\n", false, Outcome::InfrastructureError),
+        ("printf garbage\n", false, Outcome::InfrastructureError),
+        ("sleep 100\n", true, Outcome::Cancelled),
+    ] {
+        let f = Fixture::new(script);
+        let manifest = evaluate(
+            &f.1,
+            &f.toolchain(),
+            &Limits::default(),
+            &AtomicBool::new(cancelled),
+        )
+        .unwrap();
+        assert_eq!(manifest.outcome, expected);
+        let path = f.1.path.join("manifest.json");
+        let original = fs::read(&path).unwrap();
+        assert!(!f.1.path.join("manifest.pending.json").exists());
+        if !manifest.artifacts.is_empty() {
+            assert!(f.1.path.join("artifacts").is_dir());
+        }
+        assert!(evaluate(
+            &f.1,
+            &f.toolchain(),
+            &Limits::default(),
+            &AtomicBool::new(false)
+        )
+        .is_err());
+        assert_eq!(fs::read(path).unwrap(), original);
+    }
+}
+
+#[test]
+#[ignore = "requires host user systemd, cgroups, and Bubblewrap"]
+fn cli_sigterm_records_cancellation() {
+    use forge_worker::evidence::{Manifest, Outcome};
+    let f = Fixture::new("sleep 100 &\nwait\n");
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_forge-worker"))
+        .arg("evaluate")
+        .arg(f.1.path.join("inputs"))
+        .arg(&f.0)
+        .args(["signal-job", "signal-attempt"])
+        .arg(f.1.path.join("inputs").join(CANDIDATE_PATH))
+        .arg(f.toolchain())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let pid = child.id();
+    std::thread::sleep(Duration::from_secs(1));
+    assert_eq!(unsafe { libc::kill(pid as i32, libc::SIGTERM) }, 0);
+    let start = std::time::Instant::now();
+    while child.try_wait().unwrap().is_none() {
+        if start.elapsed() > Duration::from_secs(10) {
+            child.kill().unwrap();
+            panic!("CLI ignored SIGTERM");
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let output = child.wait_with_output().unwrap();
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let path = String::from_utf8(output.stdout).unwrap();
+    let manifest: Manifest = serde_json::from_slice(&fs::read(path.trim()).unwrap()).unwrap();
+    assert_eq!(manifest.outcome, Outcome::Cancelled);
+    assert_service_empty(&manifest.execution.unwrap().unit);
 }

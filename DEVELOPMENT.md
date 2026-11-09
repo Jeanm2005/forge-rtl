@@ -244,3 +244,39 @@ observations from their original environments.
   output limits, and tool exit errors. These require host execution permission;
   the session's outer sandbox denies namespace creation. Unsupported hosts fail
   closed. No fallback to unsandboxed RTL execution exists.
+
+### 2026-11-09 · Phase 2 trusted evaluation and evidence
+
+- Added the fixed simulation/equivalence/reachable-SAT/synthesis runner and Rust
+  result normalization. Preserved the reviewed Phase 1 scripts and assumptions;
+  the added candidate reachability harness differs from the negative-control
+  harness only by instantiating `mac_candidate` instead of `mac_mutant`.
+- Evidence schema v1 records independent job/attempt IDs, source hashes, worker
+  binary hash, resource configuration hash, tool/solver versions, strategy,
+  simulation seed, gate exits/durations/outcomes, bounded depth, generic counts,
+  artifact hashes/locations, and execution/cgroup result. Artifacts are validated,
+  synced and published before atomic manifest publication. Re-evaluation cannot
+  overwrite a terminal attempt. Malformed archives retain raw transport evidence.
+- Candidate validation now limits submissions to one comment-free synthesizable
+  MAC module, without strings, attributes, preprocessing, DPI, simulator commands,
+  or formal statements. Only `$signed`, `$unsigned`, `$clog2`, and `$bits` system
+  functions are allowed. This prevents candidate code from executing commands or
+  adding assumptions inside the trusted shared tool flow.
+- Initial real runs exposed an omitted awk alternatives target and a host
+  wall-clock adjustment. Exposed only the resolved awk binary at its alternatives
+  path and switched stage durations to monotonic time. Both failures were rejected
+  as infrastructure errors; their original evidence remains under
+  `build/worker-integration/1794256781383084255/` and
+  `build/worker-integration/1794256987719031221/`.
+- Exact final full-suite command:
+  `cargo test --manifest-path worker/Cargo.toml --locked -- --include-ignored --test-threads=1 --nocapture`.
+  Exit 0: 19 integration tests, including eight host-only sandbox/evidence/signal
+  tests and one real-tool good/mutant test; none skipped. Formatting, Clippy with
+  `-D warnings`, and `bash -n scripts/worker-run.sh` also pass.
+- Verified evidence:
+  `build/worker-integration/1794257094047379108/12-mac-baseline-{good,mutant}/manifest.json`.
+  Good: all gates pass, 273187 cycles, completed induction, gold/candidate 988/988
+  generic cells. Mutant: scoreboard mismatch, completed EQY counterexample and
+  independent depth-3 VCD/JSON witness; gold/candidate 988/532 generic cells.
+  Both attempts use identical trusted-input hashes, limits, toolchain and seed.
+  Real integration verifies every published artifact hash.
