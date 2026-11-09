@@ -1,0 +1,58 @@
+name: Phase 2 worker verification and evidence
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase2-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  worker:
+    name: Rust worker, sandbox, and real-tool integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.22.1'
+      - name: Install pinned EDA toolchain and system prerequisites
+        run: bash scripts/setup.sh
+      - name: Prepare sandbox host
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bubblewrap dbus-user-session nodejs
+          worker_uid=$(id -u)
+          sudo loginctl enable-linger "$USER"
+          sudo systemctl start "user@${worker_uid}.service"
+          echo "XDG_RUNTIME_DIR=/run/user/$worker_uid" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$worker_uid/bus" >> "$GITHUB_ENV"
+          rustup component add rustfmt clippy
+      - name: Run all worker checks without skips
+        run: make worker-check
+      - name: Record verified revision
+        run: |
+          test "$(cat build/worker-status)" = PASS
+          git rev-parse HEAD > build/worker-revision.txt
+      - name: Deliver worker evidence and diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: phase2-evidence-${{ github.sha }}
+          path: |
+            build/worker-check.log
+            build/worker-status
+            build/worker-revision.txt
+            build/worker-integration/
+          if-no-files-found: warn
+          retention-days: 30

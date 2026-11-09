@@ -4,13 +4,13 @@
 
 | Field | State |
 | --- | --- |
-| Active phase | Phase 1 complete; Phase 2 in progress |
+| Active phase | Phases 1 and 2 complete; Phase 3 is next |
 | Current target | Signed INT8 × INT8 MAC with wrapping INT32 accumulation |
-| Last verified revision | `2bb50e0` (full SHA in `build/ci-verified/revision.txt`) |
-| Tested environment | Ubuntu 24.04 GitHub Actions, pinned OSS CAD Suite 2026-11-05 |
+| Phase 1 verified revision | `2bb50e0` (full SHA in `build/ci-verified/revision.txt`) |
+| Tested environments | Phase 1: Ubuntu 24.04 CI; Phase 2: Ubuntu 26.04.1 WSL2, pinned OSS CAD Suite 2026-11-05 |
 | Current baseline | 273,187 simulation cycles; completed proof; reachable mutant counterexample; 988 generic cells per implementation |
-| Next action | Add sandboxed execution, supervision, and evidence to Rust staging |
-| Open question | No Phase 1 blockers remain |
+| Next action | Phase 3 Go gRPC control plane and lifecycle policy |
+| Open question | No Phase 2 blockers remain; worker CI awaits its first push |
 
 ## Baseline results
 
@@ -37,6 +37,9 @@ into ignored `build/ci-verified/`.
 | D005 | Disable internal EQY matches and audit public-only matches | Prevent internal cut points from hiding a sequential reset or arithmetic mismatch. Require every generated partition's strategy to pass. |
 | D006 | Confirm mutant failure independently with bounded reachable SAT, depth 3 | EQY failure alone may mean failure to prove. Require an actual model and retained VCD/JSON; reject errors/timeouts. |
 | D007 | Keep candidate as an equivalence fixture | No measurements support an optimization claim. |
+| D008 | Use Bubblewrap plus delegated user systemd/cgroup v2 for local worker isolation | Enforce namespace, aggregate memory/task, writable-storage, and process-tree limits; fail closed on unsupported hosts. |
+| D009 | Accept a conservative single-module RTL subset in Phase 2 | Prevent simulator commands, extra modules, directives, and candidate assumptions from subverting trusted evaluation. |
+| D010 | Publish validated artifacts before immutable schema v1 terminal evidence | Preserve input/output identity and prevent partial artifacts or reruns from replacing terminal outcomes. |
 
 ## Run history
 
@@ -280,3 +283,29 @@ observations from their original environments.
   independent depth-3 VCD/JSON witness; gold/candidate 988/532 generic cells.
   Both attempts use identical trusted-input hashes, limits, toolchain and seed.
   Real integration verifies every published artifact hash.
+
+### 2026-11-09 · Phase 2 reproducible checks and completion
+
+- `make worker-check` exits 0: formatting, Clippy, shell syntax and all 19 tests
+  pass without skips. Console evidence is `build/worker-check.log`; explicit
+  suite success is `build/worker-status`. Latest good/mutant manifests and full
+  artifacts are under `build/worker-integration/1794257300926764130/`.
+- Host versions: Rust/Cargo 1.99.1, Bubblewrap 0.11.1, systemd 259, Ubuntu
+  26.04.1 WSL2. EDA versions are unchanged from Phase 1; host GCC 15.2.0,
+  Make 4.4.1, Node 24.22.1. Each manifest records actual tool versions.
+- `actionlint .github/workflows/phase1.yml .github/workflows/phase2.yml` and
+  `git diff --check` exit 0. New Phase 2 CI provisions the user service manager,
+  runs the same no-skip command, and uploads manifests, raw and extracted
+  artifacts, source hashes and suite diagnostics. The remote job is pending
+  the publication of these changes; local completion does not claim remote CI.
+- All Phase 2 exit criteria are satisfied locally: real-tool good/mutant
+  reproduction; malformed-report, tool-failure, timeout, cancellation, tree
+  cleanup and artifact-isolation tests; input/tool/attempt traceability. The
+  baseline passes all gates with 988/988 generic cells. The mutant remains a
+  rejected negative control despite its lower generic count of 532 cells.
+- Documented local job/attempt identity, input subset, resource configuration,
+  CLI result semantics, evidence schema/publication ordering, and hard-crash
+  behavior in `docs/worker.md`. Recorded the user's sole-author/committer
+  instruction in `AGENTS.md` for future repository work.
+- Phase 3 is next. No Go orchestration, retry/eligibility policy, proposal loop,
+  physical evaluation, or automatic promotion is introduced in Phase 2.

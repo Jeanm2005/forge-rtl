@@ -1,9 +1,9 @@
 # TinyML RTL Optimization
 
 Phase 1 is complete: simulation, equivalence, the reachable negative control,
-and generic synthesis passed in the pinned CI environment. Phase 2 is in progress.
-The Rust worker currently validates and stages attempts; sandboxed execution and
-normalized evidence remain pending. See [the worker contract](docs/worker.md).
+and generic synthesis passed in the pinned CI environment. Phase 2 is complete.
+The Rust worker validates candidates, isolates execution, supervises tool trees,
+and publishes versioned evidence for good and mutant evaluations. See [the worker contract](docs/worker.md).
 Go orchestration, proposal agents, and physical evaluation remain later phases.
 
 ## Arithmetic and timing contract
@@ -25,7 +25,7 @@ fixture until measurements justify an optimization claim.
 
 The inspected environment is **Ubuntu 26.04.1 LTS on WSL2**, x86-64,
 kernel `6.18.54.1-microsoft-standard-WSL2`. Available: GNU Make 4.4.1,
-G++ 15.2.0, Node.js v24.22.1, Bash and GNU coreutils. Node parses evidence only;
+G++ 15.2.0, Node.js v24.22.1, Bash and GNU coreutils. Node audits trusted Phase 1 evidence;
 there is no proposal service or agent framework.
 
 Required on `PATH`: `verilator`, `yosys`, `eqy`, `sby`, `bitwuzla`, `g++`, `make`, `node`, `timeout`,
@@ -70,6 +70,7 @@ make sim
 make formal
 make negative
 make synth
+make worker-check  # Rust checks plus all sandbox and real-tool worker tests
 ```
 
 Each stage removes its own previous output before checking prerequisites. The

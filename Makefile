@@ -1,4 +1,4 @@
-.PHONY: all check sim formal negative synth tools setup clean
+.PHONY: all check sim formal negative synth tools setup clean worker-check
 all: check
 check:
 	bash scripts/check.sh all
@@ -8,3 +8,5 @@ clean:
 	rm -rf build
 setup:
 	bash scripts/setup.sh
+worker-check:
+	bash scripts/worker-check.sh
