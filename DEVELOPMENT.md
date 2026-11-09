@@ -7,10 +7,11 @@
 | Active phase | Phases 1 and 2 complete; Phase 3 is next |
 | Current target | Signed INT8 × INT8 MAC with wrapping INT32 accumulation |
 | Phase 1 verified revision | `2bb50e0` (full SHA in `build/ci-verified/revision.txt`) |
-| Tested environments | Phase 1: Ubuntu 24.04 CI; Phase 2: Ubuntu 26.04.1 WSL2, pinned OSS CAD Suite 2026-11-05 |
+| Phase 2 verified revision | `9008675` (full SHA in `build/phase2-ci-verified/worker-revision.txt`) |
+| Tested environments | Ubuntu 24.04 CI and Ubuntu 26.04.1 WSL2, pinned OSS CAD Suite 2026-11-05 |
 | Current baseline | 273,187 simulation cycles; completed proof; reachable mutant counterexample; 988 generic cells per implementation |
 | Next action | Phase 3 Go gRPC control plane and lifecycle policy |
-| Open question | No Phase 2 blockers remain; worker CI awaits its first push |
+| Open question | No Phase 2 blockers remain; local and clean-checkout CI checks pass |
 
 ## Baseline results
 
@@ -329,3 +330,33 @@ observations from their original environments.
   Cargo formatting/Clippy, actionlint, and `git diff --check` all exit 0. Local
   AppArmor parsing is a syntax check, not a claim of kernel policy installation.
   The follow-up hosted run must validate this host provisioning change.
+
+### 2026-11-09 · Phase 2 clean-checkout CI verified
+
+- Revision `9008675b726c7eee65432da21430564eb33e1c48` passes both
+  [Phase 2 CI run 42697135430](https://github.com/Jeanm2005/forge-rtl/actions/runs/42697135430)
+  and [Phase 1 CI run 42697135105](https://github.com/Jeanm2005/forge-rtl/actions/runs/42697135105).
+  The scoped AppArmor host profile fixed namespace startup. No RTL, proof
+  assumptions, or worker isolation settings changed to obtain this result.
+- `make worker-check` succeeds on the clean Ubuntu 24.04 checkout: formatting,
+  Clippy with warnings denied, runner syntax, and all 19 tests pass with zero
+  skipped tests. Host versions: Rust/Cargo 1.99.1, Bubblewrap 0.9.0, systemd 255;
+  sandbox versions: pinned EDA suite as above, GCC 13.3.0, Make 4.3, Node 18.19.1.
+  Node is the sandbox-visible system binary, independent of the Actions host's
+  setup-node selection, as documented by the worker mount contract.
+- Download command (exit 0):
+  `gh run download 42697135430 --repo Jeanm2005/forge-rtl --name phase2-evidence-9008675b726c7eee65432da21430564eb33e1c48 --dir build/phase2-ci-verified`.
+  Retained suite evidence: `worker-check.log`, `worker-status` (`PASS`), and
+  `worker-revision.txt` in that directory. Verified every recorded input,
+  extracted-artifact, and transport SHA-256 against the downloaded bytes using
+  Python's `hashlib`; all match.
+- Good and mutant manifests are under
+  `build/phase2-ci-verified/worker-integration/1794257623975215647/12-mac-baseline-{good,mutant}/`.
+  Good: passed, 273187 scoreboard cycles, completed EQY proof, 988/988 cells.
+  Mutant: counterexample, explicit scoreboard mismatch, completed failing EQY
+  partition with trace, depth-3 reachable VCD/JSON, 988/532 cells. This confirms
+  Phase 2 exit criteria in both the local host and a clean hosted checkout.
+- This final documentation-only evidence commit skips redundant CI. Evaluated
+  source, configuration, tests and workflow remain exactly those at `9008675`.
+  All Phase 2 implementation and follow-up commits retain Jean Cruz as sole
+  author and committer, with no coauthor trailers. Phase 3 is ready to begin.
