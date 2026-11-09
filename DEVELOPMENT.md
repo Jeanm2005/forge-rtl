@@ -224,3 +224,23 @@ observations from their original environments.
   resource quotas before execution, supervise process trees and cancellation,
   parse tool outcomes, publish hashed/versioned evidence, and reproduce both
   baseline and mutant outcomes through the worker. Phase 1 RTL is unchanged.
+
+### 2026-11-09 · Phase 2 sandbox and supervision
+
+- Added Bubblewrap isolation inside a transient user systemd service. The worker
+  clears environment variables, exposes only read-only system/tool/input mounts,
+  unshares networking and process namespaces, disables nested user namespaces,
+  and provides size-limited writable tmpfs mounts. Cgroups enforce aggregate
+  memory and task limits; systemd also enforces CPU bandwidth, CPU/file/open-file
+  limits, and a backup runtime deadline. Output capture is independently bounded.
+- Cancellation, wall timeout, and output overflow stop the entire service control
+  group; the worker waits for pipe drainage and records the service result.
+  The current trusted runner only tests transport; EDA evaluation is next.
+- Exact commands: `cargo fmt --manifest-path worker/Cargo.toml`,
+  `cargo clippy --manifest-path worker/Cargo.toml --locked --all-targets -- -D warnings`,
+  `cargo test --manifest-path worker/Cargo.toml --locked --test sandbox -- --ignored --test-threads=1`.
+  All pass. Six host integration tests verify the isolation boundary, aggregate
+  memory OOM, aggregate task limits, timeout/cancellation process-tree cleanup,
+  output limits, and tool exit errors. These require host execution permission;
+  the session's outer sandbox denies namespace creation. Unsupported hosts fail
+  closed. No fallback to unsandboxed RTL execution exists.

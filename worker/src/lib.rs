@@ -1,3 +1,4 @@
+pub mod sandbox;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
@@ -15,6 +16,7 @@ const TRUSTED: &[&str] = &[
     "scripts/audit-eqy.mjs",
     "scripts/counts.mjs",
     "Makefile",
+    "scripts/worker-run.sh",
 ];
 
 #[derive(Debug)]
@@ -144,6 +146,7 @@ pub fn prepare(
         permissions.set_readonly(true);
         file.set_permissions(permissions)?;
     }
+    fs::create_dir(path.join("inputs/build"))?;
     let mut ready = OpenOptions::new()
         .write(true)
         .create_new(true)
