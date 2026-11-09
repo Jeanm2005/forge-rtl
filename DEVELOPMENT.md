@@ -4,12 +4,12 @@
 
 | Field | State |
 | --- | --- |
-| Active phase | Phase 1 complete; Phase 2 is next |
+| Active phase | Phase 1 complete; Phase 2 in progress |
 | Current target | Signed INT8 × INT8 MAC with wrapping INT32 accumulation |
 | Last verified revision | `2bb50e0` (full SHA in `build/ci-verified/revision.txt`) |
 | Tested environment | Ubuntu 24.04 GitHub Actions, pinned OSS CAD Suite 2026-11-05 |
 | Current baseline | 273,187 simulation cycles; completed proof; reachable mutant counterexample; 988 generic cells per implementation |
-| Next action | Phase 2 Rust execution worker |
+| Next action | Add sandboxed execution, supervision, and evidence to Rust staging |
 | Open question | No Phase 1 blockers remain |
 
 ## Baseline results
@@ -203,3 +203,24 @@ observations from their original environments.
 - Results and paths are in the current baseline table. Counts are generic
   structural cells, with no physical area or optimization claim. Phase 1 exit
   criteria are satisfied; no candidate has been promoted.
+
+### 2026-11-09 · Phase 2 attempt staging
+
+- Added dependency-free Rust library and CLI in `worker/` for typed job/attempt
+  identities, bounded full-file candidate replacement, and exclusive attempt
+  directories. Only `rtl/candidate/mac_candidate.sv` is replaceable. Candidate
+  preprocessing is rejected conservatively. Trusted files are explicitly
+  allowlisted; source symlinks are rejected. Input files are read-only.
+- Staging is not a sandbox. No RTL or EDA tool is executed by the worker yet.
+  Caller-controlled trusted roots must be stable and administrator-owned. The
+  `PREPARED` marker reports staging only, never verification or eligibility.
+- Exact checks (all exit 0):
+  `cargo fmt --manifest-path worker/Cargo.toml`,
+  `cargo test --manifest-path worker/Cargo.toml` (3 integration tests),
+  `cargo clippy --manifest-path worker/Cargo.toml --all-targets -- -D warnings`.
+  Tests cover disallowed paths, invalid identities, encoding/size/directive
+  rejection, source symlinks, attempt separation, and overwrite refusal.
+- Phase 2 remains incomplete. Next: enforce network/credential isolation and
+  resource quotas before execution, supervise process trees and cancellation,
+  parse tool outcomes, publish hashed/versioned evidence, and reproduce both
+  baseline and mutant outcomes through the worker. Phase 1 RTL is unchanged.

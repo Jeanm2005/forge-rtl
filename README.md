@@ -1,9 +1,10 @@
 # TinyML RTL Optimization
 
-Phase 1 provides a local signed INT8 MAC evaluation fixture. The implementation
-is present, but validation is **blocked by missing EDA tools** in the supplied
-environment. No optimization or completed baseline is claimed. Later phases
-(Rust, Go, gRPC, proposal agents, LangGraph, model calls, and OpenROAD) are deferred.
+Phase 1 is complete: simulation, equivalence, the reachable negative control,
+and generic synthesis passed in the pinned CI environment. Phase 2 is in progress.
+The Rust worker currently validates and stages attempts; sandboxed execution and
+normalized evidence remain pending. See [the worker contract](docs/worker.md).
+Go orchestration, proposal agents, and physical evaluation remain later phases.
 
 ## Arithmetic and timing contract
 
@@ -136,10 +137,8 @@ days. GitHub's Actions tab provides artifact downloads. No secret is required,
 and no deployment service or automatic candidate promotion is introduced.
 Human review is still required before promotion.
 
-The workflow is implemented but has **not run remotely**: this session cannot
-push to GitHub. Local workflow validation with `actionlint` passed; EDA setup
-stopped at DNS resolution, so Ubuntu 24.04 is the configured CI platform rather
-than an observed passing test environment.
+The verified remote run and its evidence are recorded in
+[DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Project documents
 
