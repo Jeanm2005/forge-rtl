@@ -309,3 +309,23 @@ observations from their original environments.
   instruction in `AGENTS.md` for future repository work.
 - Phase 3 is next. No Go orchestration, retry/eligibility policy, proposal loop,
   physical evaluation, or automatic promotion is introduced in Phase 2.
+
+### 2026-11-09 · Phase 2 hosted AppArmor compatibility
+
+- Published all four subphase commits through `ac9ed9d` to `origin/main`, each
+  authored and committed solely by Jean Cruz <jmarcoc.2005@gmail.com>.
+- First Phase 2 CI run 42696655330 failed closed before RTL execution:
+  `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`. Retained
+  diagnostics are in `build/phase2-ci-first/`; the terminal manifest records an
+  infrastructure error. Ubuntu 24.04's default unprivileged namespace profile
+  permits creation but denies subsequent capabilities needed for loopback setup.
+- Added `scripts/ci-bwrap.apparmor`, scoped to `/usr/bin/bwrap`, using Ubuntu's
+  documented unconfined profile mode with the `userns` permission. CI loads it
+  on its disposable host. Worker namespace/cgroup/storage enforcement is unchanged;
+  no global AppArmor or user-namespace restriction is disabled. Local checks
+  never change host policy. Documented the host prerequisite and improved the
+  real-tool test's failure diagnostics to print the recorded manifest.
+- `apparmor_parser --skip-kernel-load --skip-cache scripts/ci-bwrap.apparmor`,
+  Cargo formatting/Clippy, actionlint, and `git diff --check` all exit 0. Local
+  AppArmor parsing is a syntax check, not a claim of kernel policy installation.
+  The follow-up hosted run must validate this host provisioning change.

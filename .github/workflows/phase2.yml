@@ -31,7 +31,8 @@ jobs:
       - name: Prepare sandbox host
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends bubblewrap dbus-user-session nodejs
+          sudo apt-get install -y --no-install-recommends bubblewrap dbus-user-session nodejs apparmor
+          sudo apparmor_parser -r scripts/ci-bwrap.apparmor
           worker_uid=$(id -u)
           sudo loginctl enable-linger "$USER"
           sudo systemctl start "user@${worker_uid}.service"

@@ -46,13 +46,13 @@ fn good_and_mutant_reproduce_phase_one() {
             .unwrap();
         let path = String::from_utf8(output.stdout).unwrap();
         eprintln!("{name}: {}", path.trim());
-        assert!(
-            output.status.success(),
-            "{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
         let path = Path::new(path.trim());
         let manifest: Manifest = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
+        assert!(
+            output.status.success(),
+            "{manifest:#?}\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
         assert_eq!(manifest.outcome, expected, "{manifest:#?}");
         assert_eq!(manifest.schema_version, 1);
         assert_eq!(manifest.generic_cells.as_ref().unwrap()["gold"], 988);

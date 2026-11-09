@@ -15,6 +15,13 @@ installed only in an operator's home or a hosted tool cache are not available.
 The full test command requires host namespace and user-service permissions.
 Unsupported hosts fail; the worker never falls back to unisolated execution.
 
+On Ubuntu 24.04, the host administrator may need to permit Bubblewrap user
+namespaces through an AppArmor profile. CI loads `scripts/ci-bwrap.apparmor`
+on its disposable runner, scoped to `/usr/bin/bwrap`; namespace and cgroup
+enforcement remains active. This follows the profile mechanism in the
+[Ubuntu release notes](https://documentation.ubuntu.com/release-notes/24.04/#unprivileged-user-namespace-restrictions).
+The local check command does not alter host AppArmor policy.
+
 ```sh
 make worker-check
 mkdir -p build/attempts
