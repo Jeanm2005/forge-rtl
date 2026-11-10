@@ -4,14 +4,14 @@
 
 | Field | State |
 | --- | --- |
-| Active phase | Phase 3 in progress; Phases 1 and 2 complete |
+| Active phase | Phases 1–3 complete locally; Phase 3 CI pending |
 | Current target | Signed INT8 × INT8 MAC with wrapping INT32 accumulation |
 | Phase 1 verified revision | `2bb50e0` (full SHA in `build/ci-verified/revision.txt`) |
 | Phase 2 verified revision | `9008675` (full SHA in `build/phase2-ci-verified/worker-revision.txt`) |
 | Tested environments | Ubuntu 24.04 CI and Ubuntu 26.04.1 WSL2, pinned OSS CAD Suite 2026-11-05 |
 | Current baseline | 273,187 simulation cycles; completed proof; reachable mutant counterexample; 988 generic cells per implementation |
-| Next action | Finish gRPC worker integration, lifecycle validation, and Phase 3 CI |
-| Open question | No Phase 2 blockers remain; local and clean-checkout CI checks pass |
+| Next action | Verify clean-checkout Phase 3 CI, then Phase 4 proposal loop |
+| Open question | Phase 3 local exit criteria pass; awaiting first hosted run |
 
 ## Baseline results
 
@@ -41,6 +41,9 @@ into ignored `build/ci-verified/`.
 | D008 | Use Bubblewrap plus delegated user systemd/cgroup v2 for local worker isolation | Enforce namespace, aggregate memory/task, writable-storage, and process-tree limits; fail closed on unsupported hosts. |
 | D009 | Accept a conservative single-module RTL subset in Phase 2 | Prevent simulator commands, extra modules, directives, and candidate assumptions from subverting trusted evaluation. |
 | D010 | Publish validated artifacts before immutable schema v1 terminal evidence | Preserve input/output identity and prevent partial artifacts or reruns from replacing terminal outcomes. |
+| D011 | Use a versioned, atomic JSON snapshot and exclusive lock for the local Go scheduler | Keep one durable writer and bounded retention; defer distributed storage and remote workers. |
+| D012 | Fence attempts by identity/lease/deadline and recover both known systemd units | Reject stale completions and clean orphaned launchers before retrying. |
+| D013 | Go validates evidence and explicitly queues human review | Keep lifecycle/eligibility out of Rust and prevent missing or non-passing evidence from authorizing promotion. |
 
 ## Run history
 
@@ -420,3 +423,21 @@ observations from their original environments.
   copied bytes and match. No EDA/reference/harness assumptions changed.
 - Phase 3 functionality passes locally. Reproducible commands, contracts and
   hosted CI delivery are being finalized in the next subphase.
+
+### 2026-11-09 · Phase 3 reproducible delivery
+
+- Added `make control-check`, Go daemon/client usage and the complete RPC,
+  lifecycle, retry, restart, resource, storage, and evidence contracts in
+  `docs/control-plane.md`. Documented local-only socket authority, 64-job
+  retention, immutable policy binding, deferred cleanup acknowledgment, and
+  original execution paths in archived test-state copies. Updated README and
+  the worker documentation to reflect the implemented Go owner.
+- Added a Phase 3 Ubuntu 24.04 workflow with pinned setup-go action commit,
+  Go 1.26.10, existing pinned EDA setup and scoped AppArmor profile, all Go/Rust
+  tests without skips, govulncheck 1.9.0, and uploaded durable state/evidence.
+- `actionlint .github/workflows/phase1.yml .github/workflows/phase2.yml .github/workflows/phase3.yml`,
+  `bash -n scripts/control-check.sh`, and `git diff --check` all exit 0.
+  The complete local `make control-check` and vulnerability scan already pass;
+  hosted CI will verify the final source from a clean checkout after publication.
+- All Phase 3 exit criteria are locally satisfied. Phase 4 remains unimplemented;
+  no Python/LangGraph/model adapter or physical-design flow is introduced here.

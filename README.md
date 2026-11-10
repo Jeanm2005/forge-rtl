@@ -1,10 +1,11 @@
 # TinyML RTL Optimization
 
-Phase 1 is complete: simulation, equivalence, the reachable negative control,
-and generic synthesis passed in the pinned CI environment. Phase 2 is complete.
-The Rust worker validates candidates, isolates execution, supervises tool trees,
-and publishes versioned evidence for good and mutant evaluations. See [the worker contract](docs/worker.md).
-Go orchestration, proposal agents, and physical evaluation remain later phases.
+Phases 1 and 2 provide a verified MAC baseline and an isolated Rust evaluation
+worker. Phase 3 adds a durable local Go gRPC control plane for submission,
+scheduling, cancellation, evidence retrieval, and queuing for human review.
+See the [control-plane contract](docs/control-plane.md) and
+[worker contract](docs/worker.md). Proposal agents and physical evaluation remain
+later phases. No candidate is automatically promoted.
 
 ## Arithmetic and timing contract
 
@@ -71,6 +72,7 @@ make formal
 make negative
 make synth
 make worker-check  # Rust checks plus all sandbox and real-tool worker tests
+make control-check # Go gRPC/lifecycle/race checks, real daemon recovery, Rust suite
 ```
 
 Each stage removes its own previous output before checking prerequisites. The

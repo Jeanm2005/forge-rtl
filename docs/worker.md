@@ -2,7 +2,8 @@
 
 Phase 2 executes the reviewed MAC flow in isolated attempts and publishes schema
 v1 evidence. It has no scheduler, retry policy, eligibility decision, or promotion
-operation. These belong to the later Go control plane and human review.
+operation. The [Go control plane](control-plane.md) owns lifecycle and eligibility;
+human review remains required for promotion.
 
 ## Run and verify
 

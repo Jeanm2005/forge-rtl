@@ -1,0 +1,70 @@
+name: Phase 3 control plane verification and evidence
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase3-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  control:
+    name: Go lifecycle, gRPC, Rust worker, and real-tool recovery
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.26.10'
+          cache: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.22.1'
+      - name: Install pinned EDA toolchain and system prerequisites
+        run: bash scripts/setup.sh
+      - name: Prepare sandbox host
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bubblewrap dbus-user-session nodejs apparmor
+          sudo apparmor_parser -r scripts/ci-bwrap.apparmor
+          worker_uid=$(id -u)
+          sudo loginctl enable-linger "$USER"
+          sudo systemctl start "user@${worker_uid}.service"
+          echo "XDG_RUNTIME_DIR=/run/user/$worker_uid" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$worker_uid/bus" >> "$GITHUB_ENV"
+          rustup component add rustfmt clippy
+      - name: Run all control-plane and worker checks without skips
+        run: make control-check
+      - name: Scan Go dependencies
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          cd controlplane
+          govulncheck ./...
+      - name: Record verified revision
+        run: |
+          test "$(cat build/control-status)" = PASS
+          git rev-parse HEAD > build/control-revision.txt
+      - name: Deliver control-plane evidence and diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: phase3-evidence-${{ github.sha }}
+          path: |
+            build/control-check.log
+            build/control-status
+            build/control-revision.txt
+            build/control-integration/
+            build/worker-integration/
+          if-no-files-found: warn
+          retention-days: 30
