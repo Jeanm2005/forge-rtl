@@ -224,15 +224,35 @@ func (s *Store) change(fn func(*snapshot) error) error {
 	s.data = next
 	return nil
 }
-func (s *Store) Submit(req *pb.SubmitRequest) (*Job, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	fingerprintBytes, _ := json.Marshal(struct {
+func submissionFingerprint(req *pb.SubmitRequest) string {
+	data, _ := json.Marshal(struct {
 		Path              string
 		Source            []byte
 		Timeout, Attempts uint32
 	}{req.CandidatePath, req.CandidateSource, req.TimeoutSeconds, req.MaxAttempts})
-	fingerprint := digest(fingerprintBytes)
+	return digest(data)
+}
+func (s *Store) Replay(req *pb.SubmitRequest) (*Job, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.poisoned != nil {
+		return nil, s.poisoned
+	}
+	fingerprint := submissionFingerprint(req)
+	for _, j := range s.data.Jobs {
+		if j.Key == req.IdempotencyKey {
+			if j.Fingerprint != fingerprint {
+				return nil, ErrConflict
+			}
+			return clone(j), nil
+		}
+	}
+	return nil, nil
+}
+func (s *Store) Submit(req *pb.SubmitRequest) (*Job, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	fingerprint := submissionFingerprint(req)
 	for _, job := range s.data.Jobs {
 		if job.Key == req.IdempotencyKey {
 			if job.Fingerprint != fingerprint {

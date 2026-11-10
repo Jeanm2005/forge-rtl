@@ -135,7 +135,18 @@ pub fn execute(
         .duration_since(UNIX_EPOCH)
         .map_err(|_| Error::InvalidInput("clock before epoch"))?
         .as_nanos();
-    let unit = format!("forge-worker-{}-{nonce}.service", std::process::id());
+    let unit = match std::env::var("FORGE_CONTROLLED_UNIT") {
+        Ok(unit) if unit == format!("forge-eval-{}.service", attempt.attempt.0) => unit,
+        Ok(_) => {
+            return Err(Error::InvalidInput(
+                "controlled unit does not match attempt identity",
+            ))
+        }
+        Err(std::env::VarError::NotPresent) => {
+            format!("forge-worker-{}-{nonce}.service", std::process::id())
+        }
+        Err(_) => return Err(Error::InvalidInput("invalid controlled unit encoding")),
+    };
     let archive = attempt.path.join("artifacts.tar");
     let log = attempt.path.join("execution.log");
     let archive_file = OpenOptions::new()

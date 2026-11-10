@@ -12,6 +12,18 @@ extern "C" fn cancel(_: libc::c_int) {
 
 fn run() -> Result<bool, Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args == ["validate"] {
+        let mut source = Vec::new();
+        std::io::stdin()
+            .take(MAX_SOURCE_BYTES + 1)
+            .read_to_end(&mut source)?;
+        Candidate::replacement(CANDIDATE_PATH, source)?;
+        println!(
+            "{}",
+            serde_json::json!({"schema_version": 1, "valid": true})
+        );
+        return Ok(true);
+    }
     let evaluating = args.first().map(String::as_str) == Some("evaluate");
     if !(evaluating && (args.len() == 7 || args.len() == 8)
         || args.first().map(String::as_str) == Some("stage") && args.len() == 6)

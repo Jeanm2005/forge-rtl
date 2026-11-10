@@ -384,3 +384,39 @@ observations from their original environments.
   (govulncheck 1.9.0, Go 1.26.10) now exits 0: no vulnerabilities found.
 - Phase 3 remains in progress. Real daemon/worker integration, hard-crash
   recovery and cancellation validation, documentation, and CI follow next.
+
+### 2026-11-09 · Phase 3 worker bridge, eligibility, and real daemon recovery
+
+- Added the local Unix-socket gRPC daemon, generated-client CLI, serial dispatcher,
+  leases/heartbeats, and Rust process adapter. Each attempt has known launch and
+  EDA systemd units. Restart fences abandoned leases and stops both units before
+  serving or retrying; cancellation/deadlines propagate through the same cleanup
+  path. Cleanup failures stop dispatch. Standalone Phase 2 units remain unchanged.
+- Rust now exposes bounded stdin validation without tool execution and accepts a
+  trusted controlled unit name only when it matches the execution attempt.
+  Go verifies worker identity, exact input/configuration/toolchain hashes, every
+  artifact/transport hash, explicit gates and required evidence before granting
+  eligibility. It publishes its manifest copy before terminal state. Review is
+  explicit, idempotent, and revalidates actual files; no promotion is exposed.
+- Real end-to-end tests submit/retrieve evidence through the actual daemon over
+  gRPC, queue the passing baseline for human review, reject the mutant, cancel
+  an active worker, SIGKILL the daemon and recover/retry with a new attempt,
+  replay the submission after restart, and enforce an overall deadline. The
+  checks verify empty launch/EDA process groups after cleanup.
+- An initial race-detector run caught promoted `bytes.Buffer.ReadFrom` bypassing
+  the bounded console writer and its lock. Removed embedding, added an `io.Copy`
+  cap regression test, and instrumented the daemon itself with the race detector.
+  Subsequent real daemon/race runs pass. Go vet also caught and blocked a malformed
+  JSON tag during the streaming-hash refactor; corrected before publication.
+- Exact full command: `GOMODCACHE=/tmp/forge-phase3-gomod GOCACHE=/tmp/forge-phase3-gocache make control-check`.
+  Exit 0: Go formatting/vet/race checks, 16 Go top-level tests plus subcases,
+  Rust formatting/Clippy and all 20 Rust integration tests, no skips. Console
+  and explicit success: `build/control-check.log`, `build/control-status`.
+- Durable real-gRPC evidence: `build/control-integration/1794276292250159405/`.
+  `state.json` retains five logical jobs: good awaiting review (988/988 cells),
+  rejected mutant counterexample (988/532), cancelled, restart-recovered passing
+  (abandoned plus fresh finished attempt), and timed out. All accepted manifest,
+  input, artifact, and transport hashes were independently checked against the
+  copied bytes and match. No EDA/reference/harness assumptions changed.
+- Phase 3 functionality passes locally. Reproducible commands, contracts and
+  hosted CI delivery are being finalized in the next subphase.
