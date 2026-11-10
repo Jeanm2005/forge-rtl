@@ -1,0 +1,66 @@
+syntax = "proto3";
+package forge.control.v1;
+option go_package = "github.com/Jeanm2005/forge-rtl/controlplane/api/v1;controlv1";
+
+service Control {
+  rpc Submit(SubmitRequest) returns (Job);
+  rpc Get(GetRequest) returns (Job);
+  rpc Cancel(GetRequest) returns (Job);
+  rpc GetEvidence(EvidenceRequest) returns (Evidence);
+  rpc QueueReview(GetRequest) returns (Job);
+}
+
+enum JobState {
+  JOB_STATE_UNSPECIFIED = 0;
+  QUEUED = 1;
+  RUNNING = 2;
+  COMPLETED = 3;
+  CANCELLED = 4;
+  TIMED_OUT = 5;
+  AWAITING_REVIEW = 6;
+}
+enum AttemptState {
+  ATTEMPT_STATE_UNSPECIFIED = 0;
+  LEASED = 1;
+  FINISHED = 2;
+  EXPIRED = 3;
+  ABANDONED = 4;
+  ATTEMPT_CANCELLED = 5;
+  ATTEMPT_TIMED_OUT = 6;
+}
+message SubmitRequest {
+  string idempotency_key = 1;
+  string candidate_path = 2;
+  bytes candidate_source = 3;
+  uint32 timeout_seconds = 4;
+  uint32 max_attempts = 5;
+}
+message GetRequest { string job_id = 1; }
+message EvidenceRequest { string job_id = 1; string attempt_id = 2; }
+message Evidence {
+  string job_id = 1;
+  string attempt_id = 2;
+  bytes manifest_json = 3;
+  string manifest_sha256 = 4;
+  string artifact_directory = 5;
+}
+message Attempt {
+  string attempt_id = 1;
+  AttemptState state = 2;
+  int64 lease_until_unix_ms = 3;
+  string outcome = 4;
+  string diagnostic = 5;
+  string manifest_sha256 = 6;
+}
+message Job {
+  string job_id = 1;
+  JobState state = 2;
+  int64 created_unix_ms = 3;
+  int64 deadline_unix_ms = 4;
+  uint32 max_attempts = 5;
+  string candidate_sha256 = 6;
+  bool eligible = 7;
+  string outcome = 8;
+  string diagnostic = 9;
+  repeated Attempt attempts = 10;
+}

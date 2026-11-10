@@ -4,13 +4,13 @@
 
 | Field | State |
 | --- | --- |
-| Active phase | Phases 1 and 2 complete; Phase 3 is next |
+| Active phase | Phase 3 in progress; Phases 1 and 2 complete |
 | Current target | Signed INT8 × INT8 MAC with wrapping INT32 accumulation |
 | Phase 1 verified revision | `2bb50e0` (full SHA in `build/ci-verified/revision.txt`) |
 | Phase 2 verified revision | `9008675` (full SHA in `build/phase2-ci-verified/worker-revision.txt`) |
 | Tested environments | Ubuntu 24.04 CI and Ubuntu 26.04.1 WSL2, pinned OSS CAD Suite 2026-11-05 |
 | Current baseline | 273,187 simulation cycles; completed proof; reachable mutant counterexample; 988 generic cells per implementation |
-| Next action | Phase 3 Go gRPC control plane and lifecycle policy |
+| Next action | Finish gRPC worker integration, lifecycle validation, and Phase 3 CI |
 | Open question | No Phase 2 blockers remain; local and clean-checkout CI checks pass |
 
 ## Baseline results
@@ -360,3 +360,27 @@ observations from their original environments.
   source, configuration, tests and workflow remain exactly those at `9008675`.
   All Phase 2 implementation and follow-up commits retain Jean Cruz as sole
   author and committer, with no coauthor trailers. Phase 3 is ready to begin.
+
+### 2026-11-09 · Phase 3 versioned RPC and durable lifecycle
+
+- Added `forge.control.v1` protobuf submission/status/cancellation/evidence/review
+  contracts and committed generated Go bindings. Generator identities: protoc
+  33.0, protoc-gen-go 1.36.10, protoc-gen-go-grpc 1.5.1. Normal builds do not
+  require generators. Go owns the lifecycle; the Rust evidence schema stays v1.
+- Durable single-writer state uses an exclusive filesystem lock and atomic,
+  fsynced JSON snapshots. Typed job/attempt records preserve idempotency keys,
+  source identity, deadlines, retry budgets, independent attempt IDs, and lease
+  fencing. Failed/ambiguous persistence poisons the writer until restart.
+  State binds to the reviewed evaluation policy and rejects configuration drift.
+- `go test -race ./...` passes the initial lifecycle suite, including concurrent
+  idempotent submissions, conflicting payloads, lease expiry, stale heartbeat and
+  completion rejection, deadlines, cancellation, exclusive ownership, restart
+  recovery, bounded retry, persistence failure, and missing-evidence rejection.
+  The store/RPC subphase was also tested independently in
+  `/tmp/forge-phase3-store-check-wrd7w1__/` before committing the service adapter.
+- The initial dependency scan identified affected older gRPC/HTTP2 versions.
+  Upgraded before publication to gRPC 1.85.0, protobuf 1.36.12, x/net 0.62.0,
+  x/sys 0.50.0, and x/text 0.43.0, requiring Go 1.26+. `govulncheck ./...`
+  (govulncheck 1.9.0, Go 1.26.10) now exits 0: no vulnerabilities found.
+- Phase 3 remains in progress. Real daemon/worker integration, hard-crash
+  recovery and cancellation validation, documentation, and CI follow next.
