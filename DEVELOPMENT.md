@@ -4,14 +4,15 @@
 
 | Field | State |
 | --- | --- |
-| Active phase | Phases 1–3 complete locally; Phase 3 CI pending |
+| Active phase | Phases 1–3 complete; Phase 4 is next |
 | Current target | Signed INT8 × INT8 MAC with wrapping INT32 accumulation |
 | Phase 1 verified revision | `2bb50e0` (full SHA in `build/ci-verified/revision.txt`) |
 | Phase 2 verified revision | `9008675` (full SHA in `build/phase2-ci-verified/worker-revision.txt`) |
+| Phase 3 verified revision | `253e66b` (full SHA in `build/phase3-ci-verified/control-revision.txt`) |
 | Tested environments | Ubuntu 24.04 CI and Ubuntu 26.04.1 WSL2, pinned OSS CAD Suite 2026-11-05 |
 | Current baseline | 273,187 simulation cycles; completed proof; reachable mutant counterexample; 988 generic cells per implementation |
-| Next action | Verify clean-checkout Phase 3 CI, then Phase 4 proposal loop |
-| Open question | Phase 3 local exit criteria pass; awaiting first hosted run |
+| Next action | Phase 4 bounded Python/LangGraph proposal loop |
+| Open question | No Phase 3 blockers remain; local and clean-checkout CI pass |
 
 ## Baseline results
 
@@ -441,3 +442,35 @@ observations from their original environments.
   hosted CI will verify the final source from a clean checkout after publication.
 - All Phase 3 exit criteria are locally satisfied. Phase 4 remains unimplemented;
   no Python/LangGraph/model adapter or physical-design flow is introduced here.
+
+### 2026-11-09 · Phase 3 clean-checkout CI verified
+
+- Source revision `253e66b02cff79467417a6ad7fb7e358911b7dd5` passes
+  [Phase 3 CI 42740788585](https://github.com/Jeanm2005/forge-rtl/actions/runs/42740788585),
+  [Phase 2 regression CI 42740788624](https://github.com/Jeanm2005/forge-rtl/actions/runs/42740788624),
+  and [Phase 1 regression CI 42740788610](https://github.com/Jeanm2005/forge-rtl/actions/runs/42740788610).
+- Clean Ubuntu 24.04 checkout: `make control-check` exits 0; Go 1.26.10,
+  formatting/vet/race instrumentation for daemon and tests, 16 Go top-level
+  tests plus subcases, and all 20 Rust tests pass with no skips. Pinned EDA
+  versions and baseline outcomes are preserved. `govulncheck ./...` using
+  scanner 1.9.0 exits 0: no vulnerabilities found.
+- Evidence download (exit 0):
+  `gh run download 42740788585 --repo Jeanm2005/forge-rtl --name phase3-evidence-253e66b02cff79467417a6ad7fb7e358911b7dd5 --dir build/phase3-ci-verified`.
+  Suite status, revision, and console are `control-status` (`PASS`),
+  `control-revision.txt`, and `control-check.log`. Full hosted log, including
+  the dependency scan, is retained at `build/phase3-ci-log.txt`.
+- Durable gRPC state is under
+  `build/phase3-ci-verified/control-integration/1794276686147366829/`.
+  The passing baseline is eligible and awaiting human review; the mutant has
+  a retained reachable counterexample and remains ineligible; cancelled and
+  timed-out jobs remain fenced/ineligible; the hard-crash job has an abandoned
+  attempt and a distinct passing recovery attempt. Every accepted manifest SHA
+  and input/artifact/transport hash was checked against the downloaded bytes;
+  all match. Good/recovered counts are 988/988; the rejected mutant is 988/532.
+- Three implementation subphases were committed separately as `ab0fc4e`,
+  `1a55001`, and `253e66b`. Each is authored and committed solely by Jean Cruz
+  <jmarcoc.2005@gmail.com>, with no coauthor trailers. This evidence-record
+  commit changes only documentation and skips redundant CI; evaluated source
+  remains exactly that of `253e66b`.
+- Phase 3 exit criteria are satisfied locally and in a clean hosted checkout.
+  Phase 4 is next; no proposal/model loop or automatic RTL promotion was added.
