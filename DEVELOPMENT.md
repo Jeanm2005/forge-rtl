@@ -496,3 +496,30 @@ observations from their original environments.
 - This is the first Phase 4 subtask. The bounded LangGraph workflow, deterministic
   fake proposer, gRPC/evidence adapter, reproducible evaluation, and model adapter
   remain outstanding. No Phase 4 end-to-end or hosted verification is claimed.
+
+### 2026-11-16 · Phase 4 bounded LangGraph and deterministic proposer
+
+- Added a LangGraph propose/validate/evaluate graph with an injected typed
+  evaluator, immutable trial history, distinct recorded outcomes, explicit
+  eligibility, candidate/evidence hashes, and stable per-run submission keys.
+  The graph evaluates the baseline first and requires an eligible proposed
+  candidate for success. Baseline evaluation counts against the evaluation
+  budget; rejected patches count against the separate proposal budget.
+- Added a deterministic scripted proposer that checks expected feedback before
+  producing each replacement. Tests demonstrate counterexample-driven revision,
+  valid candidates, protected-path rejection without evaluation, rejection
+  feedback with unchanged parent, zero/max budgets, exact evaluation limits,
+  deterministic repeated histories, adapter failure, and hash mismatch rejection.
+  Each evaluated trial retains exact manifest bytes and each proposal its bytes.
+- `PATH=/tmp/forge-proposal-venv/bin:$PATH make proposal-check` exits 0: Ruff
+  formatting/lint, strict mypy, and all 20 tests pass (six boundary tests and
+  fourteen workflow tests), including 100 revisions without a recursion error.
+  Evidence: `build/proposal-workflow/check.log`. Python 3.14.4, LangGraph
+  1.2.22, Ruff 0.17.5, mypy 2.4.1. Full tested dependency pins are recorded in
+  `proposal/requirements-lock.txt`; `pip check` reports no broken requirements.
+  `bash -n scripts/proposal-check.sh` and `git diff --check` exit 0.
+- Documented call-count budgets, adapter deadline responsibility, submission-key
+  replay assumptions, and in-memory history limits. No RTL, reference, proof,
+  scoring, worker execution, or Go policy inputs changed. Tests use synthetic
+  evaluations; real gRPC/evidence interpretation, durable run export, hosted
+  delivery, and model integration remain outstanding Phase 4 subtasks.

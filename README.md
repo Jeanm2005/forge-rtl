@@ -4,8 +4,10 @@ Phases 1 and 2 provide a verified MAC baseline and an isolated Rust evaluation
 worker. Phase 3 adds a durable local Go gRPC control plane for submission,
 scheduling, cancellation, evidence retrieval, and queuing for human review.
 See the [control-plane contract](docs/control-plane.md) and
-[worker contract](docs/worker.md). Proposal agents and physical evaluation remain
-later phases. No candidate is automatically promoted.
+[worker contract](docs/worker.md). Phase 4 now has a tested bounded LangGraph
+[proposal workflow](docs/proposal-loop.md) with a scripted proposer; its real
+control-plane adapter and model integration remain pending. Physical evaluation
+is a later phase. No candidate is automatically promoted.
 
 ## Arithmetic and timing contract
 
@@ -27,7 +29,7 @@ fixture until measurements justify an optimization claim.
 The inspected environment is **Ubuntu 26.04.1 LTS on WSL2**, x86-64,
 kernel `6.18.54.1-microsoft-standard-WSL2`. Available: GNU Make 4.4.1,
 G++ 15.2.0, Node.js v24.22.1, Bash and GNU coreutils. Node audits trusted Phase 1 evidence;
-there is no proposal service or agent framework.
+the Python proposal workflow has separate prerequisites documented above.
 
 Required on `PATH`: `verilator`, `yosys`, `eqy`, `sby`, `bitwuzla`, `g++`, `make`, `node`, `timeout`,
 plus the usual shell/coreutils tools. Use a compatible Yosys/EQY installation
