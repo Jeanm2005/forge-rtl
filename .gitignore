@@ -3,3 +3,5 @@
 /.tools/
 /phase1-evidence.tar.gz
 /phase1-evidence.tar.gz.sha256
+__pycache__/
+.ruff_cache/

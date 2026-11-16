@@ -474,3 +474,25 @@ observations from their original environments.
   remains exactly that of `253e66b`.
 - Phase 3 exit criteria are satisfied locally and in a clean hosted checkout.
   Phase 4 is next; no proposal/model loop or automatic RTL promotion was added.
+
+### 2026-11-16 · Phase 4 proposal contract and candidate boundary
+
+- Started Phase 4 with immutable Python candidates, exact-byte SHA-256 lineage,
+  a typed proposer protocol, and schema-v1 complete-file replacements. Only
+  `rtl/candidate/mac_candidate.sv` is accepted. Reject ambiguous/extra JSON
+  fields, stale parent hashes, traversal/protected paths, invalid UTF-8,
+  oversized sources, preprocessing, NUL bytes, and baseline-path symlinks.
+  Replacements stay in memory and leave the trusted checkout unchanged.
+- Python checks are preliminary; the Rust worker retains authoritative RTL
+  validation and isolated execution. Go retains lifecycle and eligibility.
+  Documented the trusted, quiescent baseline checkout assumption and replacement
+  format in `docs/proposal-loop.md`.
+- `PATH=/tmp/forge-proposal-venv/bin:$PATH make proposal-check` exits 0: Ruff
+  0.17.5 formatting/lint, mypy 2.4.1 strict checking, and all six unit tests with
+  adversarial subcases pass under Python 3.14.4. Evidence:
+  `build/proposal-contracts/check.log`. `bash -n scripts/proposal-check.sh` and
+  `git diff --check` also exit 0. Development tool versions are pinned in
+  `proposal/requirements-dev.txt`; runtime contracts use the standard library.
+- This is the first Phase 4 subtask. The bounded LangGraph workflow, deterministic
+  fake proposer, gRPC/evidence adapter, reproducible evaluation, and model adapter
+  remain outstanding. No Phase 4 end-to-end or hosted verification is claimed.
