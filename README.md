@@ -5,9 +5,9 @@ worker. Phase 3 adds a durable local Go gRPC control plane for submission,
 scheduling, cancellation, evidence retrieval, and queuing for human review.
 See the [control-plane contract](docs/control-plane.md) and
 [worker contract](docs/worker.md). Phase 4 now has a tested bounded LangGraph
-[proposal workflow](docs/proposal-loop.md) with a scripted proposer; its real
-control-plane adapter and model integration remain pending. Physical evaluation
-is a later phase. No candidate is automatically promoted.
+[proposal workflow](docs/proposal-loop.md) with a scripted proposer and a real
+gRPC evaluation run. Model integration and physical evaluation are later work.
+Promotion requires human review.
 
 ## Arithmetic and timing contract
 

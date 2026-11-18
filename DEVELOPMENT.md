@@ -4,15 +4,15 @@
 
 | Field | State |
 | --- | --- |
-| Active phase | Phases 1–3 complete; Phase 4 is next |
+| Active phase | Phases 1–3 complete; Phase 4 in progress |
 | Current target | Signed INT8 × INT8 MAC with wrapping INT32 accumulation |
 | Phase 1 verified revision | `2bb50e0` (full SHA in `build/ci-verified/revision.txt`) |
 | Phase 2 verified revision | `9008675` (full SHA in `build/phase2-ci-verified/worker-revision.txt`) |
 | Phase 3 verified revision | `253e66b` (full SHA in `build/phase3-ci-verified/control-revision.txt`) |
 | Tested environments | Ubuntu 24.04 CI and Ubuntu 26.04.1 WSL2, pinned OSS CAD Suite 2026-11-05 |
 | Current baseline | 273,187 simulation cycles; completed proof; reachable mutant counterexample; 988 generic cells per implementation |
-| Next action | Phase 4 bounded Python/LangGraph proposal loop |
-| Open question | No Phase 3 blockers remain; local and clean-checkout CI pass |
+| Next action | Phase 4 model adapter and hosted verification |
+| Open question | Phase 4 scripted workflow verified locally through gRPC |
 
 ## Baseline results
 
@@ -534,3 +534,30 @@ observations from their original environments.
 - `PATH=/tmp/forge-proposal-venv/bin:$PATH make proposal-check` passed Ruff
   formatting and lint, strict mypy, and 24 tests. Evidence is in
   `build/proposal-control/check.log`. `git diff --check` passed.
+
+### 2026-11-18 · Phase 4 reproducible MAC revision and run archive
+
+- Ran the Python graph against the existing Go daemon, Rust worker, and pinned
+  OSS CAD Suite 2026-11-05 under the host user systemd session. The baseline
+  passed and was eligible. The zero-extension mutant failed simulation and
+  produced both an EQY counterexample and a depth-3 reachable SAT witness.
+  The scripted sign-extension revision passed and was eligible. Baseline and
+  revision had 988 generic cells each. The ineligible mutant had 532.
+- Commands used from the repository root (with the host user bus available):
+
+  ```sh
+  build/forge-control -state build/proposal-demo/state.b8vdaH
+  PYTHONPATH=proposal /tmp/forge-proposal-venv/bin/python -m forge_proposal.demo \
+    --socket build/proposal-demo/state.b8vdaH/control.sock \
+    --run-id local-mac-revision --output build/proposal-demo/state.b8vdaH/run.zip
+  PATH=/tmp/forge-proposal-venv/bin:$PATH make proposal-check
+  git diff --check
+  ```
+
+- The demo exited 0 with `eligible: ['passed', 'counterexample', 'passed']`.
+  The archive retains candidate lineage and exact job and manifest bytes.
+  The adjacent `state.json`, `evidence/` and `runs/` retain daemon and worker
+  records, including the mutant's `artifacts/reachable/counterexample.{json,vcd}`.
+  `build/proposal-demo/check.log` records Ruff, strict mypy, and all 25 tests
+  passing. `git diff --check` passed. The model adapter and hosted Phase 4
+  verification remain outstanding.

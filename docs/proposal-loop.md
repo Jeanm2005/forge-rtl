@@ -89,3 +89,29 @@ actions.
 
 The returned immutable `Run` retains baseline bytes, every raw proposal,
 parent/child lineage, validation rejections, and each evaluation's records.
+
+## Reproduce the MAC revision run
+
+Build the worker and Go binaries and prepare the host using the
+[control-plane setup instructions](control-plane.md). In one terminal, start
+the daemon with a fresh state directory:
+
+```sh
+build/forge-control -state build/proposal-demo-state
+```
+
+In another terminal, run the scripted proposer with the pinned Python environment:
+
+```sh
+PYTHONPATH=proposal /tmp/forge-proposal-venv/bin/python -m forge_proposal.demo \
+  --socket build/proposal-demo-state/control.sock \
+  --run-id mac-sign-extension --output build/proposal-demo-state/run.zip
+```
+
+Expect three evaluations in order: the eligible baseline, the ineligible
+zero-extension mutant with a reachable counterexample, and the eligible
+sign-extension revision. Baseline and revision both measure 988 generic cells.
+The ZIP archive contains a versioned `run.json` index and exact baseline,
+candidate, proposal, job and available manifest bytes. It is published atomically
+at a new path. Keep the daemon's state directory for the referenced attempts,
+including tool logs, netlists, and counterexample traces.
