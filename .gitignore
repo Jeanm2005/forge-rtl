@@ -5,3 +5,7 @@
 /phase1-evidence.tar.gz.sha256
 __pycache__/
 .ruff_cache/
+
+/AGENTS.md
+/ROADMAP.md
+/DEVELOPMENT.md
