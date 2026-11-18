@@ -573,3 +573,13 @@ observations from their original environments.
   counterexample revision, invalid-patch boundaries, budget, and transport
   failure. Evidence is in `build/proposal-phase4/check.log`. No live model
   was installed or used during this run.
+
+### 2026-11-18 · Phase 4 hosted verification wiring
+
+- Added the CI proposal checks and artifact upload to the existing Go and
+  worker workflow so the deterministic proposal graph runs with the same
+  isolated worker and pinned EDA suite. CI runs without model credentials.
+- `bash -n scripts/proposal-integration.sh` and `git diff --check` passed.
+  With the user systemd bus available,
+  `PATH=/tmp/forge-proposal-venv/bin:$PATH bash scripts/proposal-integration.sh`
+  exited 0. Evidence: `build/proposal.Rt1qTD/run.zip` and adjacent `state/`.
