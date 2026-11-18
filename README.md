@@ -2,8 +2,10 @@
 
 Forge RTL evaluates agent-proposed SystemVerilog changes for TinyML accelerators.
 It checks each candidate against a reviewed reference, measures it with a pinned
-synthesis flow, and records the evidence needed for human review. The current
-target is a signed INT8 multiply-accumulate unit with wrapping INT32 arithmetic.
+synthesis flow, and records the evidence needed for human review. The proposal
+loop targets a signed INT8 multiply-accumulate unit with wrapping INT32
+arithmetic. A four-lane INT8 dot-product example also has a pinned OpenROAD
+placement flow.
 
 ## How it works
 
@@ -58,6 +60,14 @@ archive and worker evidence. [Verification runs](https://github.com/Jeanm2005/fo
 The proposal guide covers model-backed runs. The control-plane guide covers
 manual submissions and human review. [Proposal guide](docs/proposal-loop.md) ·
 [Control-plane guide](docs/control-plane.md)
+
+## Dot-product physical comparison
+
+The four-lane dot product accepts one vector per enabled cycle. Its carry-save
+candidate passed the Verilator scoreboard and EQY. At detailed placement in
+Nangate45, it reduced cell area by 6.18% and improved setup slack by 145.1 ps at
+a 3 ns clock. Both designs still have estimated hold violations.
+[Results and reproduction instructions](docs/dot4.md)
 
 ## Design decisions
 

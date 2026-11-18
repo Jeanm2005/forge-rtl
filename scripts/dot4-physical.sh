@@ -49,7 +49,7 @@ YOSYS
     )
 done
 
-printf 'variant\tstage\tcell_area_um2\tsetup_wns_ns\thold_wns_ns\n' > "$out/comparison.tsv"
+printf 'variant\tstage\tcell_area_um2\tsetup_worst_slack_ns\thold_worst_slack_ns\n' > "$out/comparison.tsv"
 for variant in gold candidate; do
     {
         printf '%s\t' "$variant"

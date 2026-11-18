@@ -31,8 +31,8 @@ foreach inst [$block getInsts] {
 set metrics [open metrics.tsv w]
 puts $metrics "stage\tpost-detailed-placement"
 puts $metrics "cell_area_um2\t[format %.4f $area]"
-puts $metrics "setup_wns_ns\t[format %.4f [sta::worst_slack -max]]"
-puts $metrics "hold_wns_ns\t[format %.4f [sta::worst_slack -min]]"
+puts $metrics "setup_worst_slack_ns\t[format %.4f [sta::worst_slack -max]]"
+puts $metrics "hold_worst_slack_ns\t[format %.4f [sta::worst_slack -min]]"
 close $metrics
 write_def placed.def
 write_db placed.odb

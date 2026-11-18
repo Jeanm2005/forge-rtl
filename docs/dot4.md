@@ -65,3 +65,30 @@ clock, subject to implementation and timing sign-off.
 `build/dot4-physical/` contains the verification evidence, mapped netlists,
 placed DEF and ODB, timing reports, comparison TSV, tools, and input hashes.
 This target evaluates the repository's reviewed source files directly.
+
+## Measured results
+
+The baseline, balanced adder trial, and carry-save candidate passed the
+4,103-cycle scoreboard and all five EQY partitions. The following measurements
+use the shared 80 × 80 µm floorplan and 3 ns clock.
+
+| Implementation | Placed cell area (µm²) | Worst setup slack (ns) | Worst hold slack (ns) |
+| --- | ---: | ---: | ---: |
+| Left-to-right baseline | 2342.3960 | +1.2788 | −0.0357 |
+| Balanced adder trial | 2342.3960 | +1.2788 | −0.0357 |
+| Carry-save candidate | 2197.6920 | +1.4239 | −0.0317 |
+
+The carry-save reduction saves 144.704 µm² (6.18%) and improves worst setup
+slack by 145.1 ps and worst hold slack by 4.0 ps. The enabled-cycle throughput
+is unchanged. The negative hold estimates prevent a timing-closure claim.
+
+The balanced adder trial produced the same mapped cells and connectivity as
+the baseline after Yosys arithmetic lowering. Reproduce that trial by running
+the same setup and comparison from revision `95d643c`, which contains the
+balanced adder and the corrected physical flow. The initial 65 × 65 µm
+floorplan yielded no comparable measurements. After netlist parser
+compatibility was fixed, placement rejected the 0.55 density because the
+baseline used over 69% of the available core area.
+
+GitHub Actions publishes the comparison and diagnostic artifacts per revision.
+[Dot-product workflow runs](https://github.com/Jeanm2005/forge-rtl/actions/workflows/phase5.yml)
