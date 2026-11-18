@@ -561,3 +561,15 @@ observations from their original environments.
   `build/proposal-demo/check.log` records Ruff, strict mypy, and all 25 tests
   passing. `git diff --check` passed. The model adapter and hosted Phase 4
   verification remain outstanding.
+
+### 2026-11-18 · Phase 4 local model adapter
+
+- Added an Ollama loopback adapter with bounded model output, the existing
+  replacement validation, and archiveable transport errors. Model prompts
+  contain the current candidate and structured feedback. The model has no
+  evaluator or promotion tools.
+- `PATH=/tmp/forge-proposal-venv/bin:$PATH make proposal-check` passed Ruff,
+  strict mypy, and 28 tests. Tests simulate Ollama responses to verify the
+  counterexample revision, invalid-patch boundaries, budget, and transport
+  failure. Evidence is in `build/proposal-phase4/check.log`. No live model
+  was installed or used during this run.

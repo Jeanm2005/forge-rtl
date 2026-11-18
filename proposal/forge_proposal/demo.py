@@ -7,9 +7,10 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from forge_proposal.contracts import Candidate, load_baseline
+from forge_proposal.contracts import Candidate, Proposer, load_baseline
 from forge_proposal.control import ControlEvaluator
 from forge_proposal.fake import FakeProposer, Step
+from forge_proposal.model import OllamaProposer
 from forge_proposal.workflow import Budget, Run, run_loop
 
 BUDGET = Budget(proposals=2, evaluations=3)
@@ -80,20 +81,28 @@ def main() -> int:
     parser.add_argument("--socket", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--run-id", required=True)
+    parser.add_argument("--model", help="local Ollama model name")
+    parser.add_argument("--ollama-port", type=int, default=11434)
     args = parser.parse_args()
     if args.output.exists() or args.output.is_symlink():
         parser.error("output already exists")
 
     root: Path = args.root
     baseline = load_baseline(root)
-    mutant = (root / "tests/mac_mutant.sv").read_text(encoding="utf-8")
-    mutant = mutant.replace("module mac_mutant", "module mac_candidate", 1)
-    fixed = mutant.replace("16'b0, product", "{16{product[15]}}, product", 1)
-    if fixed == mutant or Candidate(fixed.encode()).digest == baseline.digest:
-        parser.error("expected a distinct sign-extension revision of the MAC mutant")
-    proposer = FakeProposer(
-        (Step(mutant, "Outcome: passed"), Step(fixed, "Outcome: counterexample"))
-    )
+    proposer: Proposer
+    if args.model:
+        proposer = OllamaProposer(args.model, port=args.ollama_port)
+    else:
+        mutant = (root / "tests/mac_mutant.sv").read_text(encoding="utf-8")
+        mutant = mutant.replace("module mac_mutant", "module mac_candidate", 1)
+        fixed = mutant.replace("16'b0, product", "{16{product[15]}}, product", 1)
+        if fixed == mutant or Candidate(fixed.encode()).digest == baseline.digest:
+            parser.error(
+                "expected a distinct sign-extension revision of the MAC mutant"
+            )
+        proposer = FakeProposer(
+            (Step(mutant, "Outcome: passed"), Step(fixed, "Outcome: counterexample"))
+        )
     run = run_loop(
         baseline,
         proposer,
@@ -106,6 +115,8 @@ def main() -> int:
         trial.evaluation.outcome if trial.evaluation else None for trial in run.trials
     ]
     print(f"{run.reason}: {outcomes}; archive {args.output}")
+    if args.model:
+        return 0 if run.eligible else 1
     return (
         0 if run.eligible and outcomes == ["passed", "counterexample", "passed"] else 1
     )

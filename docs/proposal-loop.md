@@ -115,3 +115,19 @@ The ZIP archive contains a versioned `run.json` index and exact baseline,
 candidate, proposal, job and available manifest bytes. It is published atomically
 at a new path. Keep the daemon's state directory for the referenced attempts,
 including tool logs, netlists, and counterexample traces.
+
+## Use a local model
+
+Start Ollama on loopback and load a model with `ollama pull <model>`. Run the
+same command with a fresh run ID and output path, adding `--model <model>`.
+Use `--ollama-port` if your server listens on a different port. The adapter uses
+Ollama's [generate API](https://docs.ollama.com/api/generate) with a bounded JSON
+response. The prompt contains only the current candidate, its identity, and the
+graph's feedback. The graph applies the same replacement validation and
+evaluation budget as the scripted run. A transport failure ends the run and
+preserves preceding trial records.
+
+The CLI exits successfully when Go marks a proposed candidate eligible for review.
+Compare the archived generic cell counts to assess whether the proposal improved
+the baseline. The hosted checks use a deterministic proposer and exercise the
+model adapter with simulated Ollama responses.

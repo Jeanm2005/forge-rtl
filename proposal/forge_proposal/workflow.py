@@ -10,6 +10,7 @@ from forge_proposal.contracts import (
     Candidate,
     ProposalError,
     Proposer,
+    ProposerError,
     parse_replacement,
 )
 
@@ -24,7 +25,11 @@ Outcome = Literal[
     "infrastructure_error",
 ]
 StopReason = Literal[
-    "eligible", "proposal_budget", "evaluation_budget", "evaluation_error"
+    "eligible",
+    "proposal_budget",
+    "evaluation_budget",
+    "evaluation_error",
+    "proposal_error",
 ]
 
 
@@ -177,10 +182,17 @@ def run_loop(
         }
 
     def propose(state: _State) -> dict[str, object]:
-        return {
-            "payload": proposer.propose(state["parent"], state["feedback"]),
-            "proposals": state["proposals"] + 1,
-        }
+        proposals = state["proposals"] + 1
+        try:
+            payload = proposer.propose(state["parent"], state["feedback"])
+        except ProposerError as error:
+            trial = Trial(state["parent"].digest, None, None, str(error), None)
+            return {
+                "trials": (*state["trials"], trial),
+                "proposals": proposals,
+                "reason": "proposal_error",
+            }
+        return {"payload": payload, "proposals": proposals}
 
     def validate(state: _State) -> dict[str, object]:
         payload = state["payload"]
@@ -218,7 +230,11 @@ def run_loop(
     graph.add_edge(START, "evaluate")
     graph.add_edge("evaluate", "decide")
     graph.add_conditional_edges("decide", route, {END: END, "propose": "propose"})
-    graph.add_edge("propose", "validate")
+    graph.add_conditional_edges(
+        "propose",
+        lambda state: END if state["reason"] is not None else "validate",
+        {END: END, "validate": "validate"},
+    )
     graph.add_conditional_edges(
         "validate",
         lambda state: "evaluate" if state["candidate"] is not None else "decide",

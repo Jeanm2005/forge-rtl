@@ -91,6 +91,10 @@ def load_baseline(root: Path) -> Candidate:
         return Candidate(stream.read(MAX_SOURCE_BYTES + 1))
 
 
+class ProposerError(RuntimeError):
+    """The proposer failed before producing a replacement."""
+
+
 class Proposer(Protocol):
     def propose(self, parent: Candidate, feedback: str | None) -> bytes:
         """Return an untrusted versioned replacement document."""
