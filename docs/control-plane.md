@@ -7,7 +7,7 @@ resource enforcement, and tool-result normalization. No endpoint promotes RTL.
 
 ## Build, run, and verify
 
-Use Go 1.26.10+, Rust with rustfmt/Clippy, and the sandbox/tool requirements in
+Use Go 1.26.11+, Rust with rustfmt/Clippy, and the sandbox/tool requirements in
 [worker.md](worker.md). The full command runs Go formatting/vet/race checks, the
 actual daemon over a Unix socket, real good/mutant worker evaluations, active
 cancellation, hard-crash/restart recovery, deadline cleanup, and all Rust tests.

@@ -583,3 +583,8 @@ observations from their original environments.
   With the user systemd bus available,
   `PATH=/tmp/forge-proposal-venv/bin:$PATH bash scripts/proposal-integration.sh`
   exited 0. Evidence: `build/proposal.Rt1qTD/run.zip` and adjacent `state/`.
+
+- Hosted run [44366338092](https://github.com/Jeanm2005/forge-rtl/actions/runs/44366338092)
+  passed the Go/worker checks but stopped before proposal verification when
+  govulncheck flagged the pinned Go standard library. CI now uses Go 1.26.11,
+  which fixes [GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859).
