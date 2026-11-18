@@ -18,3 +18,7 @@ proposal-check:
 .PHONY: dot4-check
 dot4-check:
 	bash scripts/dot4-check.sh
+
+.PHONY: dot4-physical
+dot4-physical:
+	bash scripts/dot4-physical.sh

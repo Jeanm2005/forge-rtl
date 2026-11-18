@@ -28,3 +28,36 @@ proof therefore covers even values outside the range of an INT8 product.
 The ABC PDR strategy must report a completed proof. Enable, reset, and
 operands are unconstrained, and the interface contract starts at the first
 reset edge. Logs, partition definitions, and input hashes are in `build/dot4/`.
+
+## Placement comparison
+
+On Ubuntu 22.04 x86-64, run the following from the repository root.
+
+```sh
+make setup
+source .tools/env.sh
+bash scripts/setup-dot4-physical.sh
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends "$PWD/build/physical-platform/openroad.deb"
+make dot4-physical
+```
+
+The [OpenROAD package](https://github.com/Precision-Innovations/OpenROAD/releases/tag/2024-12-14)
+and the [Nangate45 platform inputs](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/tree/5cbd5178dc15264dbb2c6233922953347b6de92c/flow/platforms/nangate45)
+are pinned by SHA-256. The run first verifies both implementations. Yosys
+maps both to NangateOpenCellLibrary typical (1.10 V, 25 °C), with the same
+synthesis and ABC options. OpenROAD uses one thread, a 65 × 65 µm die,
+the same pin layers and placement density, and metal3 placement-estimated
+signal RC. Both designs use a 3 ns ideal clock, 50 ps uncertainty, input
+and output delays of 0–200 ps, 50 ps input slew, and 5 fF output load.
+
+The comparison measures detailed placement with estimated parasitics.
+Clock-tree synthesis, routing, extracted parasitics, and power estimation
+are outside this flow. Area is placed standard-cell area. The reports show
+setup and hold slack under the shared constraints. Meeting setup at 3 ns
+corresponds to a nominal capacity of 333.3 million enabled vectors/s at that
+clock, subject to implementation and timing sign-off.
+
+`build/dot4-physical/` contains the verification evidence, mapped netlists,
+placed DEF and ODB, timing reports, comparison TSV, tools, and input hashes.
+This target evaluates the repository's reviewed source files directly.
