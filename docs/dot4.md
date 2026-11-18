@@ -46,9 +46,10 @@ The [OpenROAD package](https://github.com/Precision-Innovations/OpenROAD/release
 and the [Nangate45 platform inputs](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/tree/5cbd5178dc15264dbb2c6233922953347b6de92c/flow/platforms/nangate45)
 are pinned by SHA-256. The run first verifies both implementations. Yosys
 maps both to NangateOpenCellLibrary typical (1.10 V, 25 °C), with the same
-synthesis and ABC options. OpenROAD uses one thread, a 65 × 65 µm die,
-the same pin layers and placement density, and metal3 placement-estimated
-signal RC. Both designs use a 3 ns ideal clock, 50 ps uncertainty, input
+synthesis and ABC options. OpenROAD uses one thread, an 80 × 80 µm die,
+a core from (3.04, 4.20) to (77, 77) µm, a target placement density of 0.55,
+metal3 horizontal and metal2 vertical pin layers, and metal3
+placement-estimated signal RC. Both designs use a 3 ns ideal clock, 50 ps uncertainty, input
 and output delays of 0–200 ps, 50 ps input slew, and 5 fF output load.
 
 The comparison measures detailed placement with estimated parasitics.

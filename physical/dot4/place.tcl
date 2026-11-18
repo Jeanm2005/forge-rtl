@@ -6,7 +6,7 @@ read_verilog mapped.v
 link_design dot4
 read_sdc $::env(DOT4_SDC)
 
-initialize_floorplan -die_area {0 0 65 65} -core_area {3 3 62 62} -site FreePDK45_38x28_10R_NP_162NW_34O
+initialize_floorplan -die_area {0 0 80 80} -core_area {3.04 4.2 77 77} -site FreePDK45_38x28_10R_NP_162NW_34O
 make_tracks
 place_pins -hor_layers metal3 -ver_layers metal2
 set_wire_rc -signal -layer metal3

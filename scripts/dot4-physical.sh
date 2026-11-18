@@ -39,6 +39,8 @@ stat -liberty "$DOT4_LIBERTY"
 write_verilog -noattr -noexpr mapped.v
 YOSYS
         timeout 180 yosys -Q -T -s map.ys > synthesis.log 2>&1
+        # The pinned OpenSTA reader accepts structural Verilog without signed port declarations.
+        sed -Ei 's/^([[:blank:]]+(input|output|wire) )signed /\1/' mapped.v
         timeout 180 openroad -no_init -exit "$root/physical/dot4/place.tcl" > placement.log 2>&1
         test -s placed.odb
         test -s metrics.tsv
