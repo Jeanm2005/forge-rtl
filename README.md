@@ -1,152 +1,69 @@
-# TinyML RTL Optimization
+# Forge RTL
 
-Phases 1 and 2 provide a verified MAC baseline and an isolated Rust evaluation
-worker. Phase 3 adds a durable local Go gRPC control plane for submission,
-scheduling, cancellation, evidence retrieval, and queuing for human review.
-See the [control-plane contract](docs/control-plane.md) and
-[worker contract](docs/worker.md). Phase 4 now has a tested bounded LangGraph
-[proposal workflow](docs/proposal-loop.md) with a scripted proposer and a real
-gRPC evaluation run. Model integration and physical evaluation are later work.
-Promotion requires human review.
+Forge RTL evaluates agent-proposed SystemVerilog changes for TinyML accelerators.
+It checks each candidate against a reviewed reference, measures it with a pinned
+synthesis flow, and records the evidence needed for human review. The current
+target is a signed INT8 multiply-accumulate unit with wrapping INT32 arithmetic.
 
-## Arithmetic and timing contract
+## How it works
 
-Both `mac_gold` and `mac_candidate` expose `clk`, active-high synchronous `rst`,
-`en`, signed 8-bit `a` and `b`, and signed 32-bit `acc`. At each rising edge:
+1. **Propose.** A bounded LangGraph loop asks a scripted proposer or a local
+   Ollama model for a replacement of the candidate module. A parent hash binds
+   each proposal to the exact source it revises.
+2. **Evaluate.** The Go scheduler sends the job to an isolated Rust worker.
+   Verilator runs an independent scoreboard, EQY checks sequential equivalence
+   after reset, and Yosys measures generic cell counts under identical settings.
+3. **Review.** The control plane validates the evidence before granting
+   eligibility. Failed proofs can feed a revision. An operator can queue a
+   passing candidate for human review. Promotion requires human approval.
 
-- `rst` clears `acc` and takes priority over `en`.
-- Otherwise, `en` adds the exact signed 16-bit product, sign-extended to 32 bits,
-  modulo 2^32.
-- Otherwise, `acc` holds its value.
+The reproducible demo follows a passing baseline, a zero-extension mutant with a
+reachable counterexample, and a passing sign-extension revision. The baseline
+and revision each use **988 generic cells**. These counts measure synthesized
+structure. Physical area, timing, and power require a physical-design flow.
 
-The updated result is observable after sequential updates settle. State before
-the first reset is unspecified. Gold uses direct widened arithmetic; candidate
-spells out the product, extension, and next-state sum. Candidate is an equivalence
-fixture until measurements justify an optimization claim.
+## Quick start
 
-## Prerequisites and environment
+Use a Linux x86-64 host with a working user systemd session, Bubblewrap, Rust,
+Go 1.26.11, and Python 3.11 or newer. CI uses Python 3.14.4.
+[Worker setup and sandbox requirements](docs/worker.md)
 
-The inspected environment is **Ubuntu 26.04.1 LTS on WSL2**, x86-64,
-kernel `6.18.54.1-microsoft-standard-WSL2`. Available: GNU Make 4.4.1,
-G++ 15.2.0, Node.js v24.22.1, Bash and GNU coreutils. Node audits trusted Phase 1 evidence;
-the Python proposal workflow has separate prerequisites documented above.
+Run the RTL baseline from the repository root. The check recreates `build/`,
+so archive any existing runs first.
 
-Required on `PATH`: `verilator`, `yosys`, `eqy`, `sby`, `bitwuzla`, `g++`, `make`, `node`, `timeout`,
-plus the usual shell/coreutils tools. Use a compatible Yosys/EQY installation
-(e.g. a complete OSS CAD Suite), rather than mixing unverified releases.
-Verilator must support `--binary --timing`; Node must support ES modules.
-The installer supports Linux x86-64, including Ubuntu on WSL2. It installs
-missing system packages through apt (using sudo when needed), requires Node 18+,
-and installs OSS CAD Suite **2026-11-05** under ignored `.tools/`. The archive
-SHA-256 is pinned in `scripts/toolchain.env` and checked before extraction. No
-system EDA installation is overwritten. The archive is approximately 749 MB,
-and extraction requires additional disk space. Run `source .tools/env.sh` in
-each new shell. The setup command needs internet access.
-
-EQY uses SBY with `smtbmc bitwuzla` and temporal induction, depth 10.
-SBY and Bitwuzla come from the same pinned suite. The independent depth-3
-counterexample check uses Yosys's built-in SAT solver.
-
-Validated on Ubuntu 24.04 GitHub Actions: Verilator 5.055
-(`v5.054-63-g57bbb293d`), Yosys 0.70+336 (`8f3cc3d0c`),
-EQY v0.70-2-g3301516, SBY v0.70-9-g79fc9ed, and Bitwuzla 0.9.1.
-Phase 1 passes: 273,187 simulation cycles, completed equivalence proof,
-reachable mutant counterexample, and 988 generic cells for each implementation.
-See [DEVELOPMENT.md](DEVELOPMENT.md) for commands and evidence.
-
-## Commands
-
-Run from the repository root:
-
-```sh
-make setup       # installs system prerequisites if needed; downloads pinned EDA tools
+```bash
+make setup
 source .tools/env.sh
-make clean
-make check       # full suite: prerequisites, simulation, proof, mutant, synthesis
+make check
 ```
 
-Individual checks:
+Build and test the worker and control plane, then run the proposal demo through
+gRPC with a scripted proposer.
 
-```sh
-make tools
-make sim
-make formal
-make negative
-make synth
-make worker-check  # Rust checks plus all sandbox and real-tool worker tests
-make control-check # Go gRPC/lifecycle/race checks, real daemon recovery, Rust suite
+```bash
+make control-check
+python3 -m venv .tools/proposal-venv
+source .tools/proposal-venv/bin/activate
+python -m pip install -r proposal/requirements-lock.txt
+make proposal-check
+bash scripts/proposal-integration.sh
 ```
 
-Each stage removes its own previous output before checking prerequisites. The
-full suite clears all `build/` evidence first and stops at the first failed gate.
-Only a completed full suite writes `build/status` containing `PASS`.
-Tool execution has wall limits: simulation compilation 180 s, simulation 60 s,
-EQY 180 s per design, bounded SAT 180 s, synthesis 180 s per design. These are
-local trusted fixtures; this runner does not provide the isolation required for
-future agent-generated RTL. Do not use it as a sandbox for untrusted submissions.
+The demo prints the path to `build/proposal.*/run.zip`. Its versioned index
+links each candidate to its parent and to the recorded job and manifest. The
+adjacent state directory contains worker logs, netlists, and counterexample
+traces. GitHub Actions also runs the demo from a clean checkout and uploads the
+archive and worker evidence. [Verification runs](https://github.com/Jeanm2005/forge-rtl/actions/workflows/phase3.yml)
 
-## Verification and evidence
+The proposal guide covers model-backed runs. The control-plane guide covers
+manual submissions and human review. [Proposal guide](docs/proposal-loop.md) ·
+[Control-plane guide](docs/control-plane.md)
 
-All generated output lives in ignored `build/`. Input SHA-256 hashes and
-available revision identity are saved in `build/*-inputs.txt`; stage console
-logs are `build/{all,sim,formal,negative,synth,tools}.log` as applicable.
+## Design decisions
 
-| Check | Method and retained artifacts |
+| Layer | Why it owns this work |
 | --- | --- |
-| Simulation | `build/sim/compile.log`, `result.log`, generated Verilator executable. Both implementations checked each cycle against independent signed 64-bit arithmetic truncated to 32 bits. Inputs change while clock is low; output sampled 1 ns after rising edge. |
-| Good proof | `build/formal/`: EQY `PASS`, matched IDs, partition list, generated RTLIL, strategy logs/status. `scripts/audit-eqy.mjs` rejects internal cut points, requires matched public `acc`, and requires every generated partition's induction strategy to pass. |
-| Negative control | `build/negative/eqy/` must report failure; an independent depth-3 Yosys SAT run must confirm a reachable failure and write `counterexample.vcd`, `counterexample.json`, and `reachable.log`. Timeout/error alone cannot pass. |
-| Synthesis | `build/synth/{gold,candidate}/`: `flow.ys`, `yosys.log`, `netlist.v`, `netlist.json`, `stat.json`. `comparison.json` records gold/candidate totals and per-type counts, and candidate-minus-gold deltas. The parser cross-checks statistics against netlists and verifies selected top. |
-
-The scoreboard's fixed xorshift32 seed is `0x1badf00d`. Directed sequences cover
-reset priority, reset after accumulated work, bubbles, consecutive updates,
-zero, both signed extrema, and mixed signs. Repeating (-128)×(-128) 131073 times
-crosses the positive boundary; repeating (-128)×127 132105 times after reset
-crosses the negative boundary. Coverage counters must observe both wrap directions.
-There are 10000 additional deterministic stimulus cycles. A mismatch reports
-cycle, reset, enable, operands, expected value, and both actual outputs.
-
-The trusted formal wrapper initializes a one-cycle prefix flag, forces reset on
-the first transition, and masks the observation only before that transition.
-Subsequent reset, enable, and operands are unconstrained. No assumption fixes
-later operands or suppresses arithmetic. Internal state/product matches are
-excluded so the output comparison includes the complete sequential cone. The
-negative-control miter uses the same reset prefix; since its output is true
-before reset, a depth-3 mismatch necessarily occurs after reset and legal inputs.
-Its mutant zero-extends the exact signed product. Bounded SAT is counterexample
-evidence only; the good check requires a completed induction proof.
-
-Both synthesis runs use `hierarchy -check`, `synth -top`, `check -assert`, and
-`stat -json`, without a liberty library or physical constraints. Counts describe
-generic Yosys cells, not area, timing, or power. Compare only identical tool
-versions and settings. Human review remains required before promotion.
-
-The proof setup follows the official EQY documentation for
-[strategies](https://yosyshq.readthedocs.io/projects/eqy/en/latest/strategies.html)
-and [output evidence](https://yosyshq.readthedocs.io/projects/eqy/en/latest/outdir.html).
-
-## CI and delivery
-
-[`.github/workflows/phase1.yml`](.github/workflows/phase1.yml) runs on pushes,
-pull requests, and manual dispatch, using Ubuntu 24.04 on GitHub-hosted runners.
-It pins third-party actions to commit SHAs, installs Node 24.22.1, runs the same
-checksum-verified setup script as local development, checks runner syntax, and
-executes `make check`. The job has read-only repository permissions and does
-not persist checkout credentials.
-
-Successful runs deliver `phase1-verified-<commit>` containing a compressed
-evidence bundle and its SHA-256 digest, retained for 30 days. The bundle includes
-source hashes, tool versions, revision identity, simulation/proof logs, mutant
-traces, and synthesis netlists/counts. Failure diagnostics are retained for 14
-days. GitHub's Actions tab provides artifact downloads. No secret is required,
-and no deployment service or automatic candidate promotion is introduced.
-Human review is still required before promotion.
-
-The verified remote run and its evidence are recorded in
-[DEVELOPMENT.md](DEVELOPMENT.md).
-
-## Project documents
-
-- [AGENTS.md](AGENTS.md): ownership and implementation rules.
-- [ROADMAP.md](ROADMAP.md): phase scope and exit criteria.
-- [DEVELOPMENT.md](DEVELOPMENT.md): observed results and unresolved checks.
+| **SystemVerilog and EDA tools** | SystemVerilog expresses the MAC’s signed arithmetic, reset priority, and enable behavior in the same design used for synthesis. An independent scoreboard and formal equivalence catch different classes of errors. A permanent signedness mutant checks that the verification flow detects a known defect. |
+| **Rust worker** | Typed input validation and memory-safe artifact parsing fit the process that handles untrusted source. Bubblewrap and user systemd enforce resource and process-tree limits, which makes Linux sandbox support a deployment requirement. |
+| **Go and gRPC** | A typed service owns deadlines, cancellation, retry budgets, and eligibility. Versioned RPCs keep the worker and proposal loop independent. A Unix socket and an atomic local state file simplify deployment and recovery while limiting scheduling to one host. |
+| **Python and LangGraph** | Python fits the model integration ecosystem. LangGraph makes proposal and revision steps explicit and testable with a scripted proposer. Models receive the current candidate and structured feedback. Trusted verification inputs and review decisions stay outside the proposal loop. |
