@@ -13,8 +13,11 @@ products per cycle). A low enable holds the previous result. Synchronous
 active-high reset takes priority over enable and clears the register. Apply
 reset before observing the output.
 
-The baseline adds products left to right. The candidate uses two signed 17-bit
-pair sums and a final signed 18-bit sum. Both use the same external contract.
+The baseline adds products left to right. The carry-save candidate
+sign-extends each product to 18 bits, reduces the four terms to two with
+two 3-to-2 compressor stages, and uses a single carry-propagating adder.
+The compressors preserve the sum modulo 2¹⁸, which represents the exact
+result throughout the valid signed range.
 
 ## Verification
 

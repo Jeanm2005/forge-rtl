@@ -7,19 +7,23 @@ module dot4_candidate (
     output logic signed [17:0] result
 );
     logic signed [15:0] product [0:3];
+    logic signed [17:0] term [0:3];
+    logic signed [17:0] sum_lo, carry_lo, sum_hi, carry_hi;
 
     for (genvar lane = 0; lane < 4; lane++) begin : lanes
         assign product[lane] = $signed(a[8*lane +: 8]) * $signed(b[8*lane +: 8]);
+        assign term[lane] = {{2{product[lane][15]}}, product[lane]};
     end
 
-    logic signed [16:0] pair_lo, pair_hi;
-    assign pair_lo = $signed({product[0][15], product[0]}) + $signed({product[1][15], product[1]});
-    assign pair_hi = $signed({product[2][15], product[2]}) + $signed({product[3][15], product[3]});
+    assign sum_lo = term[0] ^ term[1] ^ term[2];
+    assign carry_lo = ((term[0] & term[1]) | (term[0] & term[2]) | (term[1] & term[2])) << 1'b1;
+    assign sum_hi = sum_lo ^ carry_lo ^ term[3];
+    assign carry_hi = ((sum_lo & carry_lo) | (sum_lo & term[3]) | (carry_lo & term[3])) << 1'b1;
 
     always_ff @(posedge clk) begin
         if (rst)
             result <= 18'sd0;
         else if (en)
-            result <= $signed({pair_lo[16], pair_lo}) + $signed({pair_hi[16], pair_hi});
+            result <= sum_hi + carry_hi;
     end
 endmodule
