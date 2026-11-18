@@ -1,0 +1,49 @@
+name: Dot-product verification and physical comparison
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase5-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  physical:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.22.1'
+      - name: Install pinned EDA tools and Nangate45 inputs
+        run: |
+          make setup
+          bash scripts/setup-dot4-physical.sh
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends "$PWD/build/physical-platform/openroad.deb"
+      - name: Verify and place both implementations
+        run: |
+          source .tools/env.sh
+          mkdir -p build/dot4-physical
+          git rev-parse HEAD > build/dot4-physical/revision.txt
+          make dot4-physical
+      - name: Upload comparison evidence and diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dot4-physical-${{ github.sha }}
+          path: |
+            build/dot4-physical/
+            !build/dot4-physical/verification/obj/
+          if-no-files-found: warn
+          retention-days: 30
