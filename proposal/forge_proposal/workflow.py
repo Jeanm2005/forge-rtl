@@ -15,6 +15,8 @@ from forge_proposal.contracts import (
 
 Outcome = Literal[
     "passed",
+    "verification_failed",
+    "output_limit",
     "counterexample",
     "inconclusive",
     "timeout",
@@ -32,12 +34,15 @@ class Evaluation:
     job_id: str
     outcome: Outcome
     eligible: bool
-    manifest: bytes
+    manifest: bytes | None
     feedback: str
+    job_record: bytes | None = None
 
     def __post_init__(self) -> None:
         outcomes = {
             "passed",
+            "verification_failed",
+            "output_limit",
             "counterexample",
             "inconclusive",
             "timeout",
@@ -46,7 +51,13 @@ class Evaluation:
         }
         if self.outcome not in outcomes or not self.job_id:
             raise ValueError("evaluation requires a known outcome and job identity")
-        if not isinstance(self.manifest, bytes) or not self.manifest:
+        for record in (self.manifest, self.job_record):
+            if record is not None and (not isinstance(record, bytes) or not record):
+                raise ValueError("evaluation records must be nonempty immutable bytes")
+        if self.manifest is None and (
+            self.job_record is None
+            or self.outcome not in {"timeout", "cancelled", "infrastructure_error"}
+        ):
             raise ValueError("evaluation requires immutable recorded evidence")
         if type(self.eligible) is not bool or (
             self.eligible and self.outcome != "passed"
@@ -56,8 +67,8 @@ class Evaluation:
             raise ValueError("evaluation feedback exceeds limit")
 
     @property
-    def manifest_sha256(self) -> str:
-        return sha256(self.manifest).hexdigest()
+    def manifest_sha256(self) -> str | None:
+        return sha256(self.manifest).hexdigest() if self.manifest is not None else None
 
 
 class EvaluationError(RuntimeError):

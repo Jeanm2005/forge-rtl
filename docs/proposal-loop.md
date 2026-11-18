@@ -1,9 +1,7 @@
 # Proposal loop
 
 Phase 4 provides an immutable Python proposal contract and a bounded LangGraph
-workflow with a deterministic scripted proposer. The gRPC adapter, structured
-evidence interpretation, durable run export, and model adapter remain subsequent
-subtasks. This package does not execute EDA tools or decide candidate eligibility.
+workflow with a deterministic scripted proposer and a local gRPC evaluator. This package does not execute EDA tools or decide candidate eligibility.
 
 Proposers return UTF-8 JSON with exactly these fields:
 
@@ -66,7 +64,7 @@ evaluation feedback and rejection diagnostics reach the next proposer call.
 an expected feedback substring. A script mismatch raises an error, making tests
 demonstrate that counterexample feedback actually reaches a revision.
 
-The injected `Evaluator` owns the eventual control-plane connection. It receives
+The injected `Evaluator` owns the control-plane connection. It receives
 the candidate and a stable submission key (`run_id` plus evaluation sequence).
 Reuse the run ID only to replay the same inputs, policy, budgets, and deterministic
 proposal sequence. New runs need distinct IDs. This subtask does not implement
@@ -74,16 +72,20 @@ restart/resume or network retries. Each evaluator call must enforce its own
 deadline; graph budgets count calls and do not interrupt a blocking adapter or
 proposer. Infrastructure retry policy belongs to Go.
 
-`Evaluation` carries the candidate hash, logical job ID, distinct outcome,
-explicit eligibility, exact manifest bytes and their hash, and bounded feedback.
-The future adapter must validate retrieved evidence and populate these fields
-from Go's recorded result. The graph rejects candidate-hash mismatches and stops
-on `EvaluationError`, retaining preceding trials and the failed candidate. Other
-programming errors propagate to the caller. It never infers eligibility from a
-tool log or initiates promotion or review.
+`ControlEvaluator` uses the trusted `build/forge-client` executable and the
+operator's Unix socket. It submits a private temporary copy of the candidate,
+polls the logical job, and fetches the final attempt's exact manifest. A fresh
+`Get` supplies eligibility even when `Submit` replays a terminal job. The
+adapter checks the job, attempt, candidate, outcome and manifest SHA-256 before
+passing structured gate outcomes and generic cell counts to the proposer.
+
+`Evaluation` retains the final job record (including the full attempt inventory)
+and exact final manifest bytes when available. Scheduler cancellation, deadline
+expiry, and exhausted infrastructure errors can have a job record alone. Earlier
+attempt artifacts remain in Go's durable state. The graph rejects candidate-hash
+mismatches and stops on `EvaluationError`, retaining preceding trials and the
+failed candidate. Eligibility comes from Go. Review and promotion are operator
+actions.
 
 The returned immutable `Run` retains baseline bytes, every raw proposal,
-parent/child lineage, validation rejections, and each evaluation's exact manifest.
-This is in-memory history, not crash-durable storage. Adapter-backed durable run
-export is a later subtask. Current workflow tests use synthetic evaluator fixtures;
-they make no real-tool, physical improvement, or end-to-end eligibility claim.
+parent/child lineage, validation rejections, and each evaluation's records.

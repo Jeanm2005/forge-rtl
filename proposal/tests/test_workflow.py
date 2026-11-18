@@ -80,6 +80,7 @@ class WorkflowTest(unittest.TestCase):
         for trial in result.trials:
             self.assertIsNotNone(trial.evaluation)
             assert trial.evaluation is not None
+            assert trial.evaluation.manifest_sha256 is not None
             self.assertEqual(len(trial.evaluation.manifest_sha256), 64)
         self.assertEqual(result.baseline, BASELINE)
 

@@ -523,3 +523,14 @@ observations from their original environments.
   scoring, worker execution, or Go policy inputs changed. Tests use synthetic
   evaluations; real gRPC/evidence interpretation, durable run export, hosted
   delivery, and model integration remain outstanding Phase 4 subtasks.
+
+### 2026-11-18 · Phase 4 gRPC evaluator and evidence interpretation
+
+- Python evaluates through the existing Go client over the operator's Unix
+  socket. It passes the graph's idempotency key, bounds polling and RPC calls,
+  and verifies the returned manifest against the final job and attempt record
+  and exact candidate bytes. Proposer feedback includes structured gate outcomes
+  and generic cell counts. Scheduler-only terminal results retain the job record.
+- `PATH=/tmp/forge-proposal-venv/bin:$PATH make proposal-check` passed Ruff
+  formatting and lint, strict mypy, and 24 tests. Evidence is in
+  `build/proposal-control/check.log`. `git diff --check` passed.
