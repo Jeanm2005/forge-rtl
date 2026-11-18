@@ -1,0 +1,17 @@
+[gold]
+read_verilog -sv rtl/gold/dot4_gold.sv
+rename dot4_gold dot4
+prep -top dot4
+
+[gate]
+read_verilog -sv rtl/candidate/dot4_candidate.sv
+rename dot4_candidate dot4
+prep -top dot4
+
+[match dot4]
+gold-nomatch term*
+
+[strategy prove]
+use sby
+engine abc pdr
+depth 10

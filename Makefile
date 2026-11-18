@@ -14,3 +14,7 @@ control-check:
 	bash scripts/control-check.sh
 proposal-check:
 	bash scripts/proposal-check.sh
+
+.PHONY: dot4-check
+dot4-check:
+	bash scripts/dot4-check.sh
